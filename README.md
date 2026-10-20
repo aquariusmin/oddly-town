@@ -1,69 +1,123 @@
 # Oddly Town
 
-> 컴퓨터를 쓰는 동안 화면 한쪽에서 작은 마을이 살아 움직이고, 시간과 사용 패턴에 따라 조금씩 자라는 macOS 메뉴 막대 앱.
+> 컴퓨터를 쓰는 동안 화면 한쪽에서 작은 마을이 조용히 살아 움직이고, 시간과 사용 패턴에 따라 조금씩 자라는 macOS 메뉴 막대 앱.
+> **Less Distraction, More Life.**
 
-**버전:** 0.1.0-alpha · **플랫폼:** macOS 14+ (Apple Silicon 우선) · **상태:** 초기 알파 — Apple Silicon Mac에서 빌드·실행 확인
+**버전:** 0.2.0-alpha · **플랫폼:** macOS 14+ (Apple Silicon 우선) · **상태:** 알파 — v0.2 macOS 빌드 확인 대기 중 ([알려진 문제](#알려진-문제--미검증-사항))
 
 ![에셋 프리뷰](docs/art-preview.png)
 
-*위 이미지는 `scripts/render-art-preview.py`로 픽셀맵을 렌더링한 **에셋 프리뷰**이며 실제 앱 스크린샷이 아닙니다. 좌상: Level 1 / 우상: Level 3 + 모든 활동 시설 / 좌하: 밤 / 우하: Level 3 (활동 시설 없음).*
+*위 이미지는 `scripts/render-art-preview.py`로 픽셀맵을 렌더링한 **에셋 프리뷰**(Ambient Mode 기본 크기 280×120)이며 실제 앱 스크린샷이 아닙니다. 좌상: Level 1 / 우상: Level 3 + 모든 활동 시설 / 좌하: 밤 / 우하: Level 3 (활동 시설 없음).*
 
 ---
 
-## 주요 기능 (v0.1)
+## 두 가지 모드
 
-- **투명 오버레이 마을**: 화면 오른쪽 아래, 테두리 없는 투명 창(기본 420×180pt). 키보드 포커스를 가져가지 않는 non-activating 패널.
-- **픽셀아트 마을**: 집, 나무, 길, 주민, 구름, 우체통, 해/달/별. 모든 그래픽은 코드 안 ASCII 픽셀맵으로 직접 그린 원본입니다 (외부 에셋 없음).
-- **애니메이션**: 주민이 길을 따라 걷고 멈춤, 구름 이동, 나무 흔들림(2프레임), 공방 굴뚝 연기, 축제 깃발 펄럭임, 별 반짝임.
-- **낮·밤**: 실제 시각 기준 새벽/낮/해질녘/밤 색조, 저녁에 창문과 가로등 점등, 23시 이후 집 불 꺼짐.
-- **3단계 성장**: 앱 실행 시간 기준. Level 2(누적 2시간) → 나무·울타리·꽃·가로등·이웃, Level 3(누적 6시간) → 파란 지붕 집·우물. **하루 최대 3시간**까지만 성장에 반영해 오래 켜두도록 유도하지 않습니다.
-- **활동 기반 변화 (선택, 기본 꺼짐)**: 전면 앱을 5개 카테고리로 분류해 추정 시간을 누적.
-  | 카테고리 | 마을 변화 (각 45분, 최소 레벨) |
-  |---|---|
-  | Development | 굴뚝 연기 나는 공방 (Lv 2) |
-  | Creative | 꽃밭과 이젤 (Lv 1) |
-  | Productivity | 작은 도서관 (Lv 2) |
-  | Entertainment | 마을을 가로지르는 축제 깃발 (Lv 1) |
-  | Other | 일반 성장에만 반영 |
-- **상호작용**: 마을 클릭 → 레벨/진행률 말풍선, 드래그 → 창 이동. 메뉴 막대에서 표시/숨기기, 일시정지, 클릭 통과, 활동 감지, 상태 창, 설정, 창 위치 초기화.
-- **Demo Mode (개발자 전용)**: 레벨, 낮·밤, 활동 시설을 즉시 전환. 메모리에서만 동작하고 저장되지 않습니다.
+| | **Ambient Mode** (기본) | **Town Mode** |
+|---|---|---|
+| 모습 | 화면 모서리의 작은 투명 마을 (기본 280×120pt, 2배 픽셀) | 일반 macOS 창 (840×360 마을, 6배 픽셀) + 아래 정보 패널 |
+| 여는 방법 | 앱 실행 시 자동 | 메뉴 막대 **Open Town Mode…** 또는 마을 **더블클릭** |
+| 조작 | 필요 없음. 클릭 → 레벨 말풍선, 드래그 → 이동 | 주민·건물·장식 자리 클릭 → 정보, 장식 배치, 장식 표시 여부 |
+| 포커스 | 다른 앱의 키보드 포커스를 가져가지 않음 | 일반 창처럼 활성화됨 |
+| 리소스 | 12 FPS, 가려지거나 숨기면 렌더링 정지 | 20 FPS, **열려 있는 동안만** 존재. 닫으면 장면과 렌더러를 해제 |
+
+Town Mode가 열려 있는 동안 Ambient 마을은 잠시 숨고 렌더링을 멈춥니다. 같은 마을을 두 번 그리지 않기 위해서입니다. **Back to Ambient**(또는 창 닫기, Esc)로 돌아갑니다. 두 모드는 같은 스냅샷(`TownSnapshot.make`)을 그리므로 레벨·시설·장식이 항상 같습니다. 주민의 순간적인 위치는 저장하지 않기 때문에 모드를 바꾸면 주민은 자연스러운 행동부터 다시 시작합니다.
+
+## 주요 기능
+
+- **살아 있는 주민 (최대 3명: Mori, Pip, Juno)**
+  - 행동: 산책, 둘러보기, 벤치에 앉기, 일하기, 대화, 귀가.
+  - 시설이 있으면 행동이 더 생깁니다: 공방 → 일하기, 꽃밭 → 꽃 구경, 도서관 → 독서, 축제 깃발 → 축하.
+  - 행동은 가중치 기반 상태 머신(`TownLife`)이 정합니다. 결정은 행동이 끝날 때만 내려서 10~60초 간격이고, 같은 행동을 연달아 하지 않습니다.
+  - 저녁에는 집으로 돌아가고, 밤에는 대부분 집 안에 있으며, 23시 이후에는 모두 집에 있습니다.
+- **작은 이벤트 3종**: 길고양이, 여행자(주민 한 명이 인사하러 감), 이웃 모임.
+  - 한 번에 하나만 일어나고, 끝난 뒤 최소 25분은 아무 일도 없습니다. 평균 약 30분에 한 번입니다.
+  - 밤이나 마을이 보이지 않을 때는 시작하지 않습니다. 놓쳐도 아무 불이익이 없습니다.
+- **Town Mode 꾸미기**: 앞줄 장식 자리 4곳에 벤치, 화분, 표지판, 묘목, 랜턴, 새 물통, 호박밭, 버섯을 배치합니다.
+  - 장식마다 필요한 레벨이 있습니다(Lv 1~3).
+  - 벤치를 놓으면 주민이 그곳에 앉고, 랜턴은 밤에 빛납니다.
+  - 울타리, 들꽃, 가로등, 어린 나무, 축제 깃발은 숨길 수 있습니다. 어린 나무를 숨기고 묘목을 다른 자리에 두면 "나무를 옮긴" 효과가 납니다.
+  - 배치는 저장되어 재실행 후에도 유지됩니다.
+- **3단계 성장**: 앱 실행 시간 기준입니다.
+  - Level 2(누적 2시간): 나무·울타리·꽃·가로등·이웃.
+  - Level 3(누적 6시간): 파란 지붕 집·우물·세 번째 이웃.
+  - **하루 최대 3시간**까지만 반영해서 오래 켜두도록 유도하지 않습니다.
+- **활동 기반 변화 (선택, 기본 꺼짐)**: 전면 앱을 5개 카테고리로 분류하고 추정 시간을 누적합니다. 건물만 생기는 것이 아니라 **주민 생활도 달라집니다.**
+  | 카테고리 | 마을 변화 (각 45분, 최소 레벨) | 주민 행동 |
+  |---|---|---|
+  | Development | 굴뚝 연기 나는 공방 (Lv 2) | 공방에서 망치질 (공방이 없으면 집 앞에서) |
+  | Creative | 꽃밭과 이젤 (Lv 1) | 꽃밭에 쪼그려 앉아 구경 |
+  | Productivity | 작은 도서관 (Lv 2) | 도서관 앞에서 독서 |
+  | Entertainment | 마을을 가로지르는 축제 깃발 (Lv 1) | 광장에서 축하, 모임 이벤트가 축제로 |
+  | Other | 일반 성장에만 반영 | — |
+- **낮·밤**: 새벽/낮/해질녘/밤 색조가 있고, 저녁에 창문·창가 불빛·가로등·랜턴이 켜집니다. 23시 이후에는 집 불이 꺼집니다. Town Mode에서는 하늘색도 함께 바뀝니다.
+- **Demo Mode (개발자 전용)**: Town Mode, 레벨, 낮·밤, 활동 시설, 이벤트, 주민 행동을 즉시 전환합니다.
+  - 메모리에서만 동작하고 저장되지 않습니다. Demo 중의 장식 변경도 저장되지 않습니다.
+  - 화면 모서리에 **DEMO** 표시가 붙습니다. 개발자 모드의 시간 가속 중에는 **DEV ×60** 표시가 붙어서 녹화 영상이 실제 진행과 구분됩니다.
+
+## 조작 방법
+
+| 하고 싶은 것 | 방법 |
+|---|---|
+| 레벨 확인 | 마을 클릭 → 말풍선 / 메뉴 막대 첫 줄 / Town Status… |
+| 자세히 보기·꾸미기 | 마을 더블클릭 또는 **Open Town Mode…** |
+| 창 옮기기 | 마을 드래그 (클릭 통과 중에는 메뉴의 Reset Window Position 또는 설정 사용) |
+| 크기 바꾸기 | Settings → Size (2×~6×, 280~840pt. 픽셀이 흐려지지 않도록 정수 배율만) |
+| 마우스가 마을을 지나 아래 앱을 클릭 | **Click-through** 켜기 (메뉴/설정) |
+| 잠시 멈추기 / 숨기기 | Pause Animation / Hide Town |
+| 전체 화면 앱 위에도 표시 | Settings → "Also show over full-screen apps" (기본 꺼짐) |
+
+투명한 영역의 클릭만 아래 앱으로 넘기는 영역별 클릭 판정은 v0.2에서 구현하지 않았습니다. 이렇게 하려면 마우스 위치를 계속 확인하는 폴링이나 전역 이벤트 모니터가 필요해서, "가볍게 켜두는 앱"이라는 원칙과 맞지 않습니다. 대신 기본 창을 280×120으로 줄였고, 기존 **Click-through** 모드를 그대로 둡니다. macOS가 투명 픽셀 클릭을 자체적으로 통과시키는지는 실기기에서 확인할 항목입니다([docs/TESTING.md](docs/TESTING.md)).
+
+## 리소스 사용
+
+장시간 켜두는 앱이라 다음 원칙으로 만들었습니다. **실제 수치는 아직 측정하지 않았습니다.** 측정 방법은 [docs/TESTING.md](docs/TESTING.md)에 있습니다.
+
+- **렌더링:** Ambient 12 FPS, Town Mode 20 FPS. 숨김·일시정지·가려짐·디스플레이 잠자기·Town Mode 열림 상태에서는 Ambient 렌더 루프가 멈춥니다.
+- **노드와 텍스처:** 노드는 시작할 때 한 번만 만듭니다(주민, 고양이, 여행자, 장식 32개 포함). 텍스처는 공유 캐시에서 한 번만 생성하므로 Town Mode를 열어도 다시 만들지 않습니다.
+- **행동 결정:** 주민 행동은 행동이 끝날 때만 결정합니다. 매 프레임 실행하는 로직(`update(_:)`)이 없습니다.
+- **타이머:** 성장·이벤트 틱은 60초 1개입니다. Town Mode 선택 정보 갱신(2초)과 Demo 순환(5초)은 해당 기능을 쓰는 동안만 돕니다.
+- **활동 감지:** 이벤트 기반으로, 폴링하지 않습니다.
 
 ## 개인정보
 
 - 활동 감지는 **사용자가 켜야만** 동작하며, 켤 때 수집 항목을 설명하고 동의를 받습니다.
 - 저장되는 것은 **카테고리별 총 시간뿐**입니다. 앱 이름·창 제목·URL·문서·키 입력·화면은 읽거나 저장하지 않습니다.
-- 사용하는 API는 `NSWorkspace` 전면 앱 알림과 "마지막 입력 후 경과 초"(`CGEventSource.secondsSinceLastEventType`, 5분 이상 자리 비움 판정용)뿐이며 Accessibility·Screen Recording·Input Monitoring 권한을 요청하지 않습니다.
+- 사용하는 API는 두 가지뿐이며 Accessibility·Screen Recording·Input Monitoring 권한을 요청하지 않습니다.
+  - `NSWorkspace` 전면 앱 알림
+  - "마지막 입력 후 경과 초"(`CGEventSource.secondsSinceLastEventType`): 5분 이상 자리 비움을 판정하는 데만 씁니다.
 - 네트워크 코드가 없습니다. 데이터는 `~/Library/Application Support/OddlyTown/`에만 저장됩니다.
-- 설정 창에서 활동 기록 초기화와 마을 초기화를 할 수 있습니다.
+- 설정 창에서 활동 기록 초기화와 마을 초기화를 할 수 있습니다. 마을을 초기화해도 장식 배치는 유지됩니다.
+
+## v0.1에서 업그레이드
+
+- v0.1의 `town.json`(성장·활동 기록)은 그대로 읽힙니다. 처음 저장할 때 스키마 v2로 바뀌고, 기본 장식(벤치, 화분)이 추가됩니다.
+- `settings.json`의 다른 선택(위치, 클릭 통과, 활동 감지 등)은 그대로 유지됩니다. 단, v0.1 기본값이던 **창 너비 420은 새 기본값 280으로 바뀝니다.** 다른 너비는 가장 가까운 정수 배율(280/420/560/700/840)로 맞춰집니다.
+- 이 두 가지는 회귀 테스트(`MigrationTests`)로 고정되어 있습니다.
 
 ## 기술 스택
 
-Swift 5.9+ · AppKit(오버레이 패널, 메뉴 막대) · SpriteKit(렌더링) · SwiftUI(상태/설정 창) · Foundation `Codable` + JSON 파일 저장. 외부 의존성 없음.
+Swift 5.9+ · AppKit(오버레이 패널, 메뉴 막대, Town Mode 창) · SpriteKit(렌더링) · SwiftUI(상태·설정·Town Mode 패널) · Foundation `Codable` + JSON 파일 저장. 외부 의존성 없음.
 
-**Xcode 프로젝트 대신 Swift Package를 쓰는 이유**: 손으로 만든 `.xcodeproj`는 깨지기 쉽고, 별도 도구(XcodeGen 등) 없이 Command Line Tools만으로 빌드할 수 있기 때문입니다. Xcode에서 `Package.swift`를 바로 열 수 있고, `.app` 번들은 스크립트로 만듭니다.
+Xcode 프로젝트 대신 Swift Package를 씁니다. Command Line Tools만으로 빌드되고, Xcode에서도 `Package.swift`를 바로 열 수 있습니다.
 
 ## 설치 및 실행 (Mac)
 
-요구 사항: macOS 14 이상, Xcode 15 이상 **또는** Command Line Tools(Swift 5.9+). Xcode 없이 Command Line Tools만으로도 빌드됩니다 (`xcode-select --install`).
+요구 사항: macOS 14 이상, Xcode 15 이상 **또는** Command Line Tools(Swift 6 툴체인 권장: 테스트가 Swift Testing을 사용).
 
 ```bash
 git clone <repo> oddly-town && cd oddly-town
 
-# 1) 바로 실행 (개발용, Dock 아이콘 없음)
-swift run OddlyTown
-
-# 2) .app 번들 만들기
+swift run OddlyTown                  # 바로 실행 (Dock 아이콘 없음)
 scripts/build-app.sh                 # → build/Oddly Town.app
 open "build/Oddly Town.app"
 
-# 개발자 모드 (Developer 메뉴, 별도 데이터 폴더, 5초 틱, 시간 60배속)
-"build/Oddly Town.app/Contents/MacOS/OddlyTown" --dev
+# 개발자 모드 (Developer 메뉴 + Demo Mode, 별도 데이터 폴더, 5초 틱, 시간 60배속)
+swift run OddlyTown --dev
 ODDLY_DEV=1 ODDLY_TIME_SCALE=120 swift run OddlyTown
 ```
 
-Xcode에서: `File > Open…`으로 `Package.swift`를 열고 `OddlyTown` 스킴을 실행합니다. 개발자 모드는 스킴의 Arguments에 `--dev`를 추가하세요.
-
-메뉴 막대의 집 아이콘(🏠)으로 모든 기능을 제어합니다. 종료는 메뉴의 **Quit Oddly Town**.
+메뉴 막대의 집 아이콘으로 모든 기능을 제어합니다. 종료는 **Quit Oddly Town**.
 
 ## 테스트
 
@@ -72,29 +126,29 @@ swift test                       # Mac
 scripts/test-core-docker.sh      # Linux/Docker (공식 swift:6.0 이미지, 코어만)
 ```
 
-`OddlyTownCore`(성장 엔진, 분류기, 누적기, 저장, 레이아웃 계산)는 Foundation만 사용하므로 Linux에서도 테스트됩니다. 테스트는 XCTest가 아닌 **Swift Testing**(`import Testing`)으로 작성되어 있습니다. XCTest는 Xcode 앱에만 포함되어 Command Line Tools만 있는 Mac에서는 `unable to resolve module dependency: 'XCTest'` 오류가 나기 때문입니다 (Swift 6 툴체인 필요). UI·시스템 통합은 [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트로 확인합니다.
+`OddlyTownCore`는 Foundation만 사용하므로 Linux에서도 테스트됩니다. 대상은 성장 엔진, 분류기, 누적기, 주민 행동, 이벤트, 장식, 저장·마이그레이션, 레이아웃입니다. 테스트는 XCTest가 아닌 **Swift Testing**으로 작성했습니다. XCTest는 Xcode 앱에만 들어 있어서 Command Line Tools 환경에서는 쓸 수 없기 때문입니다. UI·시스템 통합은 [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트로 확인합니다.
 
 ## 개발 환경
 
-| 환경 | 확인 내용 |
-|---|---|
-| Apple Silicon Mac, Command Line Tools (macOS 27 SDK) | `swift run OddlyTown` 빌드 및 실행 확인, `swift test` 36개 통과 |
-| Linux (WSL2) + Docker `swift:6.0-jammy` | 코어 빌드, 테스트 36개 통과 |
+| 환경 | v0.1 | v0.2 |
+|---|---|---|
+| Apple Silicon Mac, Command Line Tools (macOS 27 SDK) | 빌드·실행 확인, `swift test` 36개 통과 | **아직 빌드하지 않음** |
+| Linux (WSL2) + Docker `swift:6.0-jammy` | 코어 테스트 36개 통과 | 코어 테스트 **70개 통과** |
 
-코드는 Linux에서 작성되었고 Mac에서 처음 빌드할 때 macOS 전용 문제 3건(컴파일 오류 2건, XCTest 부재)을 수정했습니다 ([CHANGELOG.md](CHANGELOG.md)).
+v0.2의 macOS 앱 코드(AppKit/SpriteKit/SwiftUI)는 Linux에서 작성되어 아직 컴파일되지 않았습니다. 코드 리뷰로만 검토했습니다.
 
-빌드 중 `ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found` 경고는 Command Line Tools만 설치된 환경에서 나오는 것으로, 무시해도 됩니다.
+빌드 중 `ld: warning: search path ... not found` 경고는 Command Line Tools 환경에서 나오는 것이므로 무시해도 됩니다.
 
 ## 알려진 문제 / 미검증 사항
 
-- [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트(클릭 통과, 드래그, 설정 창, 활동 감지, Demo Mode 등)는 아직 항목별로 확인되지 않았습니다.
-- Mac에서 `scripts/build-app.sh`(.app 번들)는 아직 실행되지 않았습니다.
-- 성능 목표(메모리 150MB 이하, 평균 CPU 1% 이하, 15FPS)는 **아직 측정되지 않았습니다.** 측정 방법은 [docs/TESTING.md](docs/TESTING.md).
-- 전체 화면 앱 위 표시(`fullScreenAuxiliary`), 다중 모니터, 투명 영역 클릭 동작은 실기기 확인이 필요합니다.
-- 창 크기는 설정의 슬라이더로만 바꿀 수 있습니다(테두리 드래그 리사이즈 없음, 비율 고정 7:3).
+- **v0.2 macOS 타깃은 아직 Mac에서 빌드·실행되지 않았습니다.** 첫 빌드에서 컴파일 오류가 나올 수 있습니다.
+- 성능 목표(메모리 150MB 이하, 평균 CPU 1% 이하)는 v0.1·v0.2 모두 **측정되지 않았습니다.**
+- [docs/TESTING.md](docs/TESTING.md)의 수동 시나리오 7개(장시간 방치, 앱 전환, 클릭 통과, Town Mode 편집, 재실행, 잠자기, 외장 모니터)는 확인되지 않았습니다.
+- 투명 영역만 클릭 통과하는 기능 없음 (위 "조작 방법" 참고).
+- 모드를 바꾸면 주민 위치가 이어지지 않습니다 (의도된 단순화).
+- 지형(잔디+흙) 높이는 v0.1과 같은 17px입니다. 280×120에서 34pt를 차지합니다. 줄이려면 모든 배치 좌표를 다시 잡아야 해서 v0.3으로 미뤘습니다.
 - 앱별 분류 수정 UI 없음 — `settings.json`의 `categoryOverrides`를 직접 수정해야 합니다.
-- 로그인 시 자동 실행 미구현.
-- 번들 ID `com.oddlytown.OddlyTown`은 임시값입니다. 배포 전 소유한 도메인으로 바꾸세요.
+- 로그인 시 자동 실행 미구현. 번들 ID `com.oddlytown.OddlyTown`은 임시값입니다.
 
 ## 향후 계획
 

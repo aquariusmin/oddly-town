@@ -1,7 +1,7 @@
 import Foundation
 
 public enum OddlyTownVersion {
-    public static let current = "0.1.0-alpha"
+    public static let current = "0.2.0-alpha"
 }
 
 /// Coarse buckets for "what kind of app is in front". Only these buckets are stored —
