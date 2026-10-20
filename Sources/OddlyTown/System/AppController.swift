@@ -358,7 +358,7 @@ final class AppController: NSObject {
             return
         }
         demo?.cycling = true
-        demo?.phase = demo?.phase ?? .day
+        if demo?.phase == nil { demo?.phase = .day }
         let timer = Timer(timeInterval: 5, target: self, selector: #selector(advanceDemoPhase), userInfo: nil, repeats: true)
         RunLoop.main.add(timer, forMode: .common)
         demoCycleTimer = timer
@@ -374,13 +374,19 @@ final class AppController: NSObject {
     @objc private func advanceDemoPhase() {
         guard let current = demo?.phase else { return }
         let all = DayPhase.allCases
-        demo?.phase = all[(all.firstIndex(of: current)! + 1) % all.count]
+        let next = all[((all.firstIndex(of: current) ?? 0) + 1) % all.count]
+        demo?.phase = next
         refresh()
     }
 
     func toggleDemoFeature(_ feature: TownFeature) {
-        guard demo != nil else { return }
-        if demo!.extras.contains(feature) { demo!.extras.remove(feature) } else { demo!.extras.insert(feature) }
+        guard var current = demo else { return }
+        if current.extras.contains(feature) {
+            current.extras.remove(feature)
+        } else {
+            current.extras.insert(feature)
+        }
+        demo = current
         refresh()
     }
 
