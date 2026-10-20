@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics // CGRect geometry (minX, contains, …) lives here on macOS
+#endif
 
 /// Window placement math, kept free of AppKit so it can be unit-tested.
 /// Rects use AppKit's bottom-left-origin screen coordinates.

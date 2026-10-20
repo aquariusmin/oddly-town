@@ -1,4 +1,7 @@
 import XCTest
+#if canImport(CoreGraphics)
+import CoreGraphics // CGRect geometry (minX, contains, …) lives here on macOS
+#endif
 @testable import OddlyTownCore
 
 final class OverlayLayoutTests: XCTestCase {
