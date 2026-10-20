@@ -72,7 +72,7 @@ swift test                       # Mac
 scripts/test-core-docker.sh      # Linux/Docker (공식 swift:6.0 이미지, 코어만)
 ```
 
-`OddlyTownCore`(성장 엔진, 분류기, 누적기, 저장, 레이아웃 계산)는 Foundation만 사용하므로 Linux에서도 테스트됩니다. UI·시스템 통합은 [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트로 확인합니다.
+`OddlyTownCore`(성장 엔진, 분류기, 누적기, 저장, 레이아웃 계산)는 Foundation만 사용하므로 Linux에서도 테스트됩니다. 테스트는 XCTest가 아닌 **Swift Testing**(`import Testing`)으로 작성되어 있습니다. XCTest는 Xcode 앱에만 포함되어 Command Line Tools만 있는 Mac에서는 `unable to resolve module dependency: 'XCTest'` 오류가 나기 때문입니다 (Swift 6 툴체인 필요). UI·시스템 통합은 [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트로 확인합니다.
 
 ## 개발 환경
 

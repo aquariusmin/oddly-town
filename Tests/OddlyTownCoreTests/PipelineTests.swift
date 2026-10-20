@@ -1,27 +1,23 @@
-import XCTest
+import Foundation
+import Testing
 @testable import OddlyTownCore
 
 /// Drives accumulator + engine + store the same way AppController does, minute by minute.
-final class PipelineTests: XCTestCase {
-    var calendar: Calendar = {
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = TimeZone(identifier: "UTC")!
-        return c
-    }()
-
-    func testDurationText() {
-        XCTAssertEqual(DurationText.short(10), "<1m")
-        XCTAssertEqual(DurationText.short(45 * 60), "45m")
-        XCTAssertEqual(DurationText.short(2 * 3600 + 5 * 60), "2h 5m")
-        XCTAssertEqual(DurationText.short(.infinity), "<1m")
+@Suite struct PipelineTests {
+    @Test func durationText() {
+        #expect(DurationText.short(10) == "<1m")
+        #expect(DurationText.short(45 * 60) == "45m")
+        #expect(DurationText.short(2 * 3600 + 5 * 60) == "2h 5m")
+        #expect(DurationText.short(.infinity) == "<1m")
     }
 
     /// Three days of 4-hour sessions: 2h in a code editor, 2h in Figma.
-    func testSimulatedWeekGrowsDifferentlyByCategory() throws {
+    @Test func simulatedDaysGrowDifferentlyByCategory() throws {
         let engine = GrowthEngine()
         let classifier = ActivityClassifier()
+        let calendar = TestSupport.utc
         var state = TownState()
-        let start = calendar.date(from: DateComponents(year: 2026, month: 10, day: 19, hour: 9))!
+        let start = TestSupport.date(day: 19, hour: 9)
 
         for day in 0..<3 {
             var accumulator = ActivityAccumulator()
@@ -40,22 +36,22 @@ final class PipelineTests: XCTestCase {
             }
         }
 
-        XCTAssertEqual(state.growthSeconds, 9 * 3600, accuracy: 1, "3h daily cap × 3 days")
-        XCTAssertEqual(engine.level(of: state), 3)
-        XCTAssertEqual(state.activitySeconds(for: .development), 6 * 3600, accuracy: 180)
-        XCTAssertEqual(state.activitySeconds(for: .creative), 6 * 3600, accuracy: 180)
+        #expect(TestSupport.isClose(state.growthSeconds, 9 * 3600, 1), "3h daily cap × 3 days")
+        #expect(engine.level(of: state) == 3)
+        #expect(TestSupport.isClose(state.activitySeconds(for: .development), 6 * 3600, 180))
+        #expect(TestSupport.isClose(state.activitySeconds(for: .creative), 6 * 3600, 180))
         let features = engine.unlockedFeatures(of: state)
-        XCTAssertTrue(features.isSuperset(of: [.workshop, .artGarden, .secondHouse, .well]))
-        XCTAssertFalse(features.contains(.readingNook))
-        XCTAssertFalse(features.contains(.festivalBunting))
+        #expect(features.isSuperset(of: [.workshop, .artGarden, .secondHouse, .well]))
+        #expect(!features.contains(.readingNook))
+        #expect(!features.contains(.festivalBunting))
 
         // Survives a save/restore cycle unchanged.
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("pipeline-\(UUID().uuidString).json")
-        defer { try? FileManager.default.removeItem(at: url) }
-        let store = JSONFileStore<TownState>(url: url)
-        try store.save(state)
-        let restored = try XCTUnwrap(store.load().value)
-        XCTAssertEqual(engine.unlockedFeatures(of: restored), features)
-        XCTAssertEqual(restored.growthSeconds, state.growthSeconds, accuracy: 0.001)
+        try TestSupport.withTempDirectory { dir in
+            let store = JSONFileStore<TownState>(url: dir.appendingPathComponent("town.json"))
+            try store.save(state)
+            let restored = try #require(store.load().value)
+            #expect(engine.unlockedFeatures(of: restored) == features)
+            #expect(TestSupport.isClose(restored.growthSeconds, state.growthSeconds))
+        }
     }
 }

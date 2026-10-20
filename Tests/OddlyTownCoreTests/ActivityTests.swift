@@ -1,79 +1,80 @@
-import XCTest
+import Foundation
+import Testing
 @testable import OddlyTownCore
 
-final class ActivityClassifierTests: XCTestCase {
-    func testExactAndPrefixMatches() {
+@Suite struct ActivityClassifierTests {
+    @Test func exactAndPrefixMatches() {
         let classifier = ActivityClassifier()
-        XCTAssertEqual(classifier.category(forBundleID: "com.apple.dt.Xcode"), .development)
-        XCTAssertEqual(classifier.category(forBundleID: "com.jetbrains.intellij"), .development)
-        XCTAssertEqual(classifier.category(forBundleID: "com.figma.Desktop"), .creative)
-        XCTAssertEqual(classifier.category(forBundleID: "com.adobe.Photoshop"), .creative)
-        XCTAssertEqual(classifier.category(forBundleID: "com.apple.iWork.Pages"), .productivity)
-        XCTAssertEqual(classifier.category(forBundleID: "com.spotify.client"), .entertainment)
+        #expect(classifier.category(forBundleID: "com.apple.dt.Xcode") == .development)
+        #expect(classifier.category(forBundleID: "com.jetbrains.intellij") == .development)
+        #expect(classifier.category(forBundleID: "com.figma.Desktop") == .creative)
+        #expect(classifier.category(forBundleID: "com.adobe.Photoshop") == .creative)
+        #expect(classifier.category(forBundleID: "com.apple.iWork.Pages") == .productivity)
+        #expect(classifier.category(forBundleID: "com.spotify.client") == .entertainment)
     }
 
-    func testExactBeatsPrefix() {
-        XCTAssertEqual(ActivityClassifier().category(forBundleID: "com.adobe.Acrobat.Pro"), .productivity)
+    @Test func exactBeatsPrefix() {
+        #expect(ActivityClassifier().category(forBundleID: "com.adobe.Acrobat.Pro") == .productivity)
     }
 
-    func testUnknownBrowsersAndNilAreOther() {
+    @Test func unknownBrowsersAndNilAreOther() {
         let classifier = ActivityClassifier()
-        XCTAssertEqual(classifier.category(forBundleID: "com.apple.Safari"), .other)
-        XCTAssertEqual(classifier.category(forBundleID: "com.example.unknown"), .other)
-        XCTAssertEqual(classifier.category(forBundleID: nil), .other)
-        XCTAssertEqual(classifier.category(forBundleID: ""), .other)
+        #expect(classifier.category(forBundleID: "com.apple.Safari") == .other)
+        #expect(classifier.category(forBundleID: "com.example.unknown") == .other)
+        #expect(classifier.category(forBundleID: nil) == .other)
+        #expect(classifier.category(forBundleID: "") == .other)
     }
 
-    func testOverridesWinAndAreCaseInsensitive() {
+    @Test func overridesWinAndAreCaseInsensitive() {
         let classifier = ActivityClassifier(overrides: ["COM.APPLE.SAFARI": .productivity, "com.apple.dt.Xcode": .creative])
-        XCTAssertEqual(classifier.category(forBundleID: "com.apple.Safari"), .productivity)
-        XCTAssertEqual(classifier.category(forBundleID: "com.apple.dt.Xcode"), .creative)
+        #expect(classifier.category(forBundleID: "com.apple.Safari") == .productivity)
+        #expect(classifier.category(forBundleID: "com.apple.dt.Xcode") == .creative)
     }
 }
 
-final class ActivityAccumulatorTests: XCTestCase {
+@Suite struct ActivityAccumulatorTests {
     let t0 = Date(timeIntervalSince1970: 1_000_000)
 
-    func testSwitchCreditsPreviousCategory() {
+    @Test func switchCreditsPreviousCategory() {
         var acc = ActivityAccumulator(maxCreditPerSpan: 600)
-        XCTAssertNil(acc.switchTo(.development, at: t0))
+        #expect(acc.switchTo(.development, at: t0) == nil)
         let credit = acc.switchTo(.creative, at: t0.addingTimeInterval(120))
-        XCTAssertEqual(credit, ActivityCredit(category: .development, seconds: 120))
-        XCTAssertEqual(acc.current, .creative)
+        #expect(credit == ActivityCredit(category: .development, seconds: 120))
+        #expect(acc.current == .creative)
     }
 
-    func testCheckpointRestartsSpan() {
+    @Test func checkpointRestartsSpan() {
         var acc = ActivityAccumulator(maxCreditPerSpan: 600)
         _ = acc.switchTo(.productivity, at: t0)
-        XCTAssertEqual(acc.checkpoint(at: t0.addingTimeInterval(60), isIdle: false)?.seconds, 60)
-        XCTAssertEqual(acc.checkpoint(at: t0.addingTimeInterval(90), isIdle: false)?.seconds, 30)
+        #expect(acc.checkpoint(at: t0.addingTimeInterval(60), isIdle: false)?.seconds == 60)
+        #expect(acc.checkpoint(at: t0.addingTimeInterval(90), isIdle: false)?.seconds == 30)
     }
 
-    func testLongGapsAreClamped() {
+    @Test func longGapsAreClamped() {
         var acc = ActivityAccumulator(maxCreditPerSpan: 180)
         _ = acc.switchTo(.entertainment, at: t0)
-        XCTAssertEqual(acc.checkpoint(at: t0.addingTimeInterval(8 * 3600), isIdle: false)?.seconds, 180)
+        #expect(acc.checkpoint(at: t0.addingTimeInterval(8 * 3600), isIdle: false)?.seconds == 180)
     }
 
-    func testIdleSpansEarnNothing() {
+    @Test func idleSpansEarnNothing() {
         var acc = ActivityAccumulator()
         _ = acc.switchTo(.development, at: t0)
-        XCTAssertNil(acc.checkpoint(at: t0.addingTimeInterval(60), isIdle: true))
-        XCTAssertEqual(acc.checkpoint(at: t0.addingTimeInterval(100), isIdle: false)?.seconds, 40)
+        #expect(acc.checkpoint(at: t0.addingTimeInterval(60), isIdle: true) == nil)
+        #expect(acc.checkpoint(at: t0.addingTimeInterval(100), isIdle: false)?.seconds == 40)
     }
 
-    func testSuspendAndResume() {
+    @Test func suspendAndResume() {
         var acc = ActivityAccumulator()
         _ = acc.switchTo(.creative, at: t0)
-        XCTAssertEqual(acc.suspend(at: t0.addingTimeInterval(30))?.seconds, 30)
-        XCTAssertNil(acc.checkpoint(at: t0.addingTimeInterval(5000), isIdle: false), "nothing counted while suspended")
+        #expect(acc.suspend(at: t0.addingTimeInterval(30))?.seconds == 30)
+        #expect(acc.checkpoint(at: t0.addingTimeInterval(5000), isIdle: false) == nil, "nothing counted while suspended")
         acc.resume(at: t0.addingTimeInterval(6000))
-        XCTAssertEqual(acc.checkpoint(at: t0.addingTimeInterval(6010), isIdle: false)?.seconds, 10)
+        #expect(acc.checkpoint(at: t0.addingTimeInterval(6010), isIdle: false)?.seconds == 10)
     }
 
-    func testClockGoingBackwardsCreditsNothing() {
+    @Test func clockGoingBackwardsCreditsNothing() {
         var acc = ActivityAccumulator()
         _ = acc.switchTo(.creative, at: t0)
-        XCTAssertNil(acc.checkpoint(at: t0.addingTimeInterval(-100), isIdle: false))
+        #expect(acc.checkpoint(at: t0.addingTimeInterval(-100), isIdle: false) == nil)
     }
 }

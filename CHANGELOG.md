@@ -5,6 +5,7 @@
 ### Fixed
 - macOS에서 `CGRect` 기하 속성(`minX` 등)을 찾지 못하던 문제: `OverlayLayout`에 `import CoreGraphics` 추가 (Linux Foundation과의 차이).
 - Demo 낮·밤 순환 토글의 배타적 접근(Exclusivity) 위반 컴파일 오류.
+- Command Line Tools 환경에서 `swift test`가 XCTest를 찾지 못하던 문제: 테스트를 Swift Testing으로 이전.
 
 ### Verified
 - Apple Silicon Mac (Command Line Tools, macOS 27 SDK)에서 `swift run OddlyTown` 빌드 및 실행.
