@@ -10,11 +10,12 @@ struct SettingsView: View {
             Section("Town window") {
                 LabeledContent("Size") {
                     HStack {
+                        // Whole-number steps (2×–6×) keep the pixel art sharp.
                         Slider(value: $model.settings.windowWidth,
-                               in: AppSettings.minWidth...AppSettings.maxWidth, step: 20)
-                        Text("\(Int(model.settings.windowWidth)) × \(Int(model.settings.windowHeight))")
+                               in: AppSettings.minWidth...AppSettings.maxWidth, step: AppSettings.artWidth)
+                        Text("\(model.settings.pixelScale)× · \(Int(model.settings.windowWidth)) × \(Int(model.settings.windowHeight))")
                             .monospacedDigit().foregroundStyle(.secondary)
-                            .frame(width: 80, alignment: .trailing)
+                            .frame(width: 120, alignment: .trailing)
                     }
                 }
                 Picker("Position", selection: $model.settings.corner) {
@@ -26,6 +27,8 @@ struct SettingsView: View {
                 Toggle("Also show over full-screen apps", isOn: $model.settings.showOverFullScreenApps)
                 Toggle("Click-through (clicks pass to apps underneath)", isOn: $model.settings.clickThrough)
                 Toggle("Animations", isOn: $model.settings.animationsEnabled)
+                Text("Double-click the town, or use the menu bar, to open Town Mode for a closer look and decorating.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section("Activity") {

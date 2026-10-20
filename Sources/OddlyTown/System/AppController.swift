@@ -2,15 +2,18 @@ import AppKit
 import OddlyTownCore
 
 /// Demo Mode state. Lives only in memory — never saved, never mixed into real progress.
+/// Decoration changes made while demoing also stay here.
 struct DemoState {
     var level: Int
     var phase: DayPhase?        // nil = follow the real clock
     var cycling = false
     var extras: Set<TownFeature> = []
+    var decor: DecorLayout
 }
 
-/// Wires the pure core (growth, activity, persistence) to the macOS pieces
-/// (overlay, menu bar, frontmost-app monitor). Single owner of all side effects.
+/// Wires the pure core (growth, activity, behaviour, events, persistence) to the macOS
+/// pieces (overlay, Town Mode window, menu bar, frontmost-app monitor).
+/// Single owner of all side effects.
 @MainActor
 final class AppController: NSObject {
     let environment: AppEnvironment
@@ -26,6 +29,12 @@ final class AppController: NSObject {
     private let overlay = OverlayWindowController()
     private let windows = WindowPresenter()
     private var menuBar: MenuBarController?
+    private var townMode: TownModeWindowController?
+    private var selection: TownSelection?
+    private var selectionTimer: Timer?
+
+    private var events: EventScheduler
+    private var eventRNG = SplitMix64(seed: UInt64(Date().timeIntervalSince1970))
 
     private var tickTimer: Timer?
     private var lastTick = Date()
@@ -60,6 +69,7 @@ final class AppController: NSObject {
         self.townStore = townStore
         self.settingsStore = settingsStore
         self.state = loaded
+        events = EventScheduler(start: Date())
         classifier = ActivityClassifier(overrides: settings.categoryOverrides)
         model = AppModel(
             settings: settings,
@@ -80,8 +90,12 @@ final class AppController: NSObject {
         model.onResetActivity = { [weak self] in self?.confirmResetActivity() }
         model.onResetTown = { [weak self] in self?.confirmResetTown() }
         model.onResetPosition = { [weak self] in self?.resetWindowPosition() }
+        model.onPlaceDecor = { [weak self] slot, item in self?.placeDecor(item, inSlot: slot) }
+        model.onSetFeatureHidden = { [weak self] feature, hidden in self?.setFeature(feature, hidden: hidden) }
+        model.onCloseTownMode = { [weak self] in self?.closeTownMode() }
 
         overlay.onClick = { [weak self] in self?.townClicked() }
+        overlay.onDoubleClick = { [weak self] in self?.openTownMode() }
         overlay.onMoved = { [weak self] origin in self?.townDragged(to: origin) }
         overlay.apply(model.settings)
 
@@ -111,6 +125,11 @@ final class AppController: NSObject {
         saveState()
     }
 
+    /// Every scene currently drawing the town (Ambient, plus Town Mode when open).
+    private var scenes: [TownScene] {
+        [overlay.scene] + (townMode.map { [$0.scene] } ?? [])
+    }
+
     // MARK: Time
 
     @objc private func tick() {
@@ -132,6 +151,7 @@ final class AppController: NSObject {
             saveState()
         }
         refresh()
+        updateEvents(now: now, elapsed: elapsed)
     }
 
     @objc private func willSleep() {
@@ -143,6 +163,28 @@ final class AppController: NSObject {
     @objc private func didWake() {
         lastTick = Date()
         accumulator.resume(at: Date())
+    }
+
+    // MARK: Events
+
+    private func updateEvents(now: Date, elapsed: TimeInterval) {
+        guard let snapshot = lastSnapshot else { return }
+        let context = EventContext(level: snapshot.level, phase: snapshot.phase, lateNight: snapshot.lateNight,
+                                   residentCount: snapshot.residentCount,
+                                   isVisible: overlay.isAnimating || townMode != nil)
+        apply(events.update(now: now, elapsed: elapsed, context: context, using: &eventRNG))
+    }
+
+    private func apply(_ changes: [EventChange]) {
+        for change in changes {
+            switch change {
+            case .started(let kind, let duration):
+                scenes.forEach { $0.startEvent(kind, duration: duration) }
+                overlay.requestRedraw(for: 1)
+            case .ended(let kind):
+                scenes.forEach { $0.endEvent(kind) }
+            }
+        }
     }
 
     // MARK: Activity
@@ -230,6 +272,100 @@ final class AppController: NSObject {
         model.settings = settings
     }
 
+    // MARK: Town Mode
+
+    var isTownModeOpen: Bool { townMode != nil }
+
+    func openTownMode() {
+        if let townMode {
+            townMode.show()
+            return
+        }
+        let controller = TownModeWindowController(model: model)
+        controller.onClose = { [weak self] in self?.townModeDidClose() }
+        controller.scene.onSelect = { [weak self] selection in self?.townSelectionChanged(selection) }
+        townMode = controller
+        if let lastSnapshot { controller.scene.apply(lastSnapshot) }
+        controller.scene.setTag(sceneTag)
+        overlay.setSuspended(true)
+        model.isTownModeOpen = true
+        controller.show()
+
+        // Only while Town Mode is open: keep the "selected resident" text current.
+        let timer = Timer(timeInterval: 2, target: self, selector: #selector(refreshSelection), userInfo: nil, repeats: true)
+        timer.tolerance = 0.5
+        RunLoop.main.add(timer, forMode: .common)
+        selectionTimer = timer
+    }
+
+    func closeTownMode() {
+        townMode?.close() // → townModeDidClose
+    }
+
+    private func townModeDidClose() {
+        selectionTimer?.invalidate()
+        selectionTimer = nil
+        townMode = nil
+        selection = nil
+        model.selection = nil
+        model.isTownModeOpen = false
+        overlay.setSuspended(false)
+        overlay.requestRedraw()
+    }
+
+    private func townSelectionChanged(_ selection: TownSelection?) {
+        self.selection = selection
+        refreshSelection()
+    }
+
+    @objc private func refreshSelection() {
+        model.selection = selection.map(describe)
+    }
+
+    private func describe(_ selection: TownSelection) -> SelectionInfo {
+        let level = lastSnapshot?.level ?? 1
+        switch selection {
+        case .resident(let index):
+            let look = TownArt.residentLooks[index]
+            let doing = townMode?.scene.residentActivity(index)?.displayName ?? "At home"
+            let home = TownLife.home(forResident: index) == .cottage ? "Lives in the red cottage." : "Lives in the blue house."
+            return SelectionInfo(title: look.name, detail: "\(doing). \(home)")
+        case .feature(let feature):
+            return SelectionInfo(title: feature.displayName, detail: feature.story)
+        case .cottage:
+            return SelectionInfo(title: "Red cottage", detail: "The first house in town. Mori lives here, and Pip from Level 2.")
+        case .slot(let slot):
+            let decor = demo?.decor ?? state.decor
+            guard let item = decor.item(inSlot: slot) else {
+                return SelectionInfo(title: "Spot \(slot + 1)", detail: "An empty spot. Choose a decoration below.", slot: slot)
+            }
+            let note = item.minimumLevel > level ? " Appears when the town reaches Level \(item.minimumLevel)." : ""
+            let seat = item.isSeat ? " Residents sit here." : ""
+            return SelectionInfo(title: item.displayName, detail: "Spot \(slot + 1).\(seat)\(note)", slot: slot)
+        }
+    }
+
+    private func placeDecor(_ item: DecorItem?, inSlot slot: Int) {
+        if demo != nil {
+            demo?.decor.place(item, inSlot: slot)
+        } else {
+            state.decor.place(item, inSlot: slot)
+            saveState()
+        }
+        refresh()
+        refreshSelection()
+    }
+
+    private func setFeature(_ feature: TownFeature, hidden: Bool) {
+        if demo != nil {
+            demo?.decor.setHidden(hidden, feature)
+        } else {
+            state.decor.setHidden(hidden, feature)
+            saveState()
+        }
+        refresh()
+    }
+
     // MARK: Status & windows
 
     var statusLine: String {
@@ -275,9 +411,10 @@ final class AppController: NSObject {
     }
 
     private func confirmResetTown() {
-        guard confirm("Start a new town?", "Level, growth and activity history are all reset to the beginning.",
+        guard confirm("Start a new town?",
+                      "Level, growth and activity history are reset to the beginning. Your decoration choices are kept.",
                       action: "Reset Town") else { return }
-        state = TownState()
+        state = TownState(decor: state.decor)
         accumulator = ActivityAccumulator()
         saveState()
         refresh()
@@ -287,42 +424,56 @@ final class AppController: NSObject {
 
     private func currentSnapshot(now: Date) -> TownSnapshot {
         if let demo {
-            return TownSnapshot(
+            return TownSnapshot.make(
                 level: demo.level,
-                features: engine.levelFeatures(forLevel: demo.level).union(demo.extras),
+                features: demoUnlocked(demo),
+                decor: demo.decor,
                 phase: demo.phase ?? DayPhase.at(now),
                 lateNight: demo.phase == nil && TownSnapshot.isLateNight(now)
             )
         }
-        return TownSnapshot(
-            level: engine.level(of: state),
-            features: engine.unlockedFeatures(of: state),
-            phase: DayPhase.at(now),
-            lateNight: TownSnapshot.isLateNight(now)
-        )
+        return TownSnapshot.make(state: state, engine: engine, now: now)
+    }
+
+    private func demoUnlocked(_ demo: DemoState) -> Set<TownFeature> {
+        engine.levelFeatures(forLevel: demo.level).union(demo.extras)
+    }
+
+    /// Corner label so screen recordings of demos or sped-up time can't pass for real progress.
+    private var sceneTag: String? {
+        if demo != nil { return "DEMO" }
+        if environment.isDeveloper { return "DEV ×\(Int(environment.timeScale))" }
+        return nil
     }
 
     private func refresh() {
         let now = Date()
         let snapshot = currentSnapshot(now: now)
         if snapshot != lastSnapshot {
-            overlay.scene.apply(snapshot)
+            scenes.forEach { $0.apply(snapshot) }
             overlay.requestRedraw(for: 4)
             lastSnapshot = snapshot
         }
+        scenes.forEach { $0.setTag(sceneTag) }
         let progress: GrowthProgress
+        let unlocked: Set<TownFeature>
         if let demo {
             progress = engine.progress(of: TownState(growthSeconds: demo.level == 1 ? 0 : engine.rules.levelThresholds[demo.level - 2]))
+            unlocked = demoUnlocked(demo)
         } else {
             progress = engine.progress(of: state)
+            unlocked = engine.unlockedFeatures(of: state)
         }
         model.status = TownStatus(
             progress: progress,
             remainingToday: engine.remainingToday(state, now: now),
             activitySeconds: state.activitySeconds,
             features: snapshot.features,
+            unlocked: unlocked,
             isDemo: demo != nil
         )
+        let decor = demo?.decor ?? state.decor
+        if model.decor != decor { model.decor = decor }
     }
 
     private func saveState() {
@@ -333,7 +484,7 @@ final class AppController: NSObject {
     // MARK: Developer & Demo Mode
 
     func setDemoMode(_ on: Bool) {
-        demo = on ? DemoState(level: engine.level(of: state)) : nil
+        demo = on ? DemoState(level: engine.level(of: state), decor: state.decor) : nil
         if !on { stopDemoCycle() }
         refresh()
     }
@@ -388,6 +539,19 @@ final class AppController: NSObject {
         }
         demo = current
         refresh()
+    }
+
+    /// Demo: start an event now (still one at a time — it replaces any running event).
+    func demoTriggerEvent(_ kind: TownEventKind) {
+        guard demo != nil else { return }
+        apply(events.force(kind, now: Date()))
+    }
+
+    /// Demo: every resident switches to `activity`; normal life resumes afterwards.
+    func demoResidents(_ activity: ResidentActivity) {
+        guard demo != nil else { return }
+        scenes.forEach { $0.demoForce(activity) }
+        overlay.requestRedraw(for: 2)
     }
 
     /// Developer mode only: adds real (dev-folder) progress to test growth and unlocks end to end.

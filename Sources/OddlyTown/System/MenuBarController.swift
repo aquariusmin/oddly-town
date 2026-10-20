@@ -34,6 +34,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let header = NSMenuItem(title: controller.statusLine, action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
+        menu.addItem(item(controller.isTownModeOpen ? "Back to Ambient Mode" : "Open Town Mode…", #selector(toggleTownMode)))
         menu.addItem(item("Town Status…", #selector(showStatus)))
         menu.addItem(.separator())
 
@@ -84,6 +85,25 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             entry.representedObject = feature.rawValue
             items.append(entry)
         }
+        items.append(.separator())
+        let events: [(TownEventKind, String)] = [(.strayCat, "Event: Stray Cat"), (.traveler, "Event: Traveler"),
+                                                 (.gathering, "Event: Gathering")]
+        for (kind, title) in events {
+            let entry = item(title, #selector(demoEvent(_:)))
+            entry.representedObject = kind.rawValue
+            items.append(entry)
+        }
+        items.append(.separator())
+        let behaviours: [(ResidentActivity, String)] = [
+            (.walking, "Residents: Stroll"), (.sitting, "Residents: Sit"), (.working, "Residents: Work"),
+            (.socializing, "Residents: Chat"), (.reading, "Residents: Read"), (.admiringFlowers, "Residents: Admire Flowers"),
+            (.celebrating, "Residents: Celebrate"), (.returningHome, "Residents: Go Home"),
+        ]
+        for (activity, title) in behaviours {
+            let entry = item(title, #selector(demoBehaviour(_:)))
+            entry.representedObject = activity.rawValue
+            items.append(entry)
+        }
         for entry in items {
             if !entry.isSeparatorItem { entry.isEnabled = demo != nil; entry.indentationLevel = 1 }
             sub.addItem(entry)
@@ -113,6 +133,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     // MARK: Actions
 
     @objc private func showStatus() { controller.showStatusWindow() }
+    @objc private func toggleTownMode() {
+        controller.isTownModeOpen ? controller.closeTownMode() : controller.openTownMode()
+    }
     @objc private func showSettings() { controller.showSettingsWindow() }
     @objc private func toggleVisible() { controller.toggleVisible() }
     @objc private func toggleAnimations() { controller.toggleAnimations() }
@@ -133,6 +156,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func demoFeature(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let feature = TownFeature(rawValue: raw) else { return }
         controller.toggleDemoFeature(feature)
+    }
+
+    @objc private func demoEvent(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let kind = TownEventKind(rawValue: raw) else { return }
+        controller.demoTriggerEvent(kind)
+    }
+
+    @objc private func demoBehaviour(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let activity = ResidentActivity(rawValue: raw) else { return }
+        controller.demoResidents(activity)
     }
 
     @objc private func devGrow() { controller.devAddGrowth(hours: 1) }

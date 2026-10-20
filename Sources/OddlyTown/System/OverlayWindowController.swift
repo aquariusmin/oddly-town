@@ -31,9 +31,11 @@ final class OverlayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-/// SKView that turns a click into `onClick` and a drag into moving the window.
+/// SKView that turns a click into `onClick`, a double-click into `onDoubleClick`
+/// and a drag into moving the window.
 final class TownView: SKView {
     var onClick: (() -> Void)?
+    var onDoubleClick: (() -> Void)?
     var onDragEnded: (() -> Void)?
     var dragEnabled = true
 
@@ -59,36 +61,45 @@ final class TownView: SKView {
     }
 
     override func mouseUp(with event: NSEvent) {
-        if dragged { onDragEnded?() } else if mouseDownLocation != nil { onClick?() }
+        if dragged {
+            onDragEnded?()
+        } else if mouseDownLocation != nil {
+            // The first click of a double-click still shows the status bubble; that's harmless.
+            if event.clickCount >= 2 { onDoubleClick?() } else { onClick?() }
+        }
         mouseDownLocation = nil
         dragged = false
     }
 }
 
-/// Owns the overlay panel and decides when SpriteKit should render at all.
-/// Rendering stops when the town is hidden, paused, occluded or the displays sleep.
+/// Owns the Ambient Mode panel and decides when SpriteKit should render at all.
+/// Rendering stops when the town is hidden, paused, occluded, the displays sleep,
+/// or Town Mode is open (the overlay steps aside while the big window shows the town).
 @MainActor
 final class OverlayWindowController: NSObject {
-    static let framesPerSecond = 15
+    static let framesPerSecond = 12
 
     let panel: OverlayPanel
     let townView: TownView
     let scene: TownScene
 
     var onClick: (() -> Void)?
+    var onDoubleClick: (() -> Void)?
     var onMoved: ((CGPoint) -> Void)?
 
     private var settings = AppSettings()
+    private var suspended = false
     private var hasPlaced = false
     private var occluded = false
     private var displaysAsleep = false
     private var redrawTimer: Timer?
 
     override init() {
-        let size = TownScene.sceneSize
+        let defaults = AppSettings()
+        let size = CGSize(width: defaults.windowWidth, height: defaults.windowHeight)
         panel = OverlayPanel.make(size: size)
         townView = TownView(frame: NSRect(origin: .zero, size: size))
-        scene = TownScene(size: size)
+        scene = TownScene(pixelScale: defaults.pixelScale, interactive: false)
         super.init()
 
         townView.allowsTransparency = true
@@ -98,6 +109,7 @@ final class OverlayWindowController: NSObject {
         panel.contentView = townView
 
         townView.onClick = { [weak self] in self?.onClick?() }
+        townView.onDoubleClick = { [weak self] in self?.onDoubleClick?() }
         townView.onDragEnded = { [weak self] in
             guard let self else { return }
             self.onMoved?(self.panel.frame.origin)
@@ -113,7 +125,18 @@ final class OverlayWindowController: NSObject {
     }
 
     var isAnimating: Bool {
-        settings.townVisible && settings.animationsEnabled && !occluded && !displaysAsleep
+        isShown && settings.animationsEnabled && !occluded && !displaysAsleep
+    }
+
+    /// Visible on screen right now (not hidden by the user, not stepped aside for Town Mode).
+    var isShown: Bool { settings.townVisible && !suspended }
+
+    /// Town Mode open: hide the overlay and stop rendering it entirely.
+    func setSuspended(_ on: Bool) {
+        guard on != suspended else { return }
+        suspended = on
+        updateVisibility()
+        updateRendering()
     }
 
     func apply(_ new: AppSettings) {
@@ -127,15 +150,20 @@ final class OverlayWindowController: NSObject {
         if new.showOverFullScreenApps { behavior.insert(.fullScreenAuxiliary) }
         panel.collectionBehavior = behavior
 
+        scene.setPixelScale(new.pixelScale)
         if !hasPlaced || old.windowWidth != new.windowWidth || old.corner != new.corner || old.customOrigin != new.customOrigin {
             placeWindow(preferPrimary: !hasPlaced)
         }
-        if new.townVisible {
+        updateVisibility()
+        updateRendering()
+    }
+
+    private func updateVisibility() {
+        if isShown {
             panel.orderFrontRegardless()
         } else {
             panel.orderOut(nil)
         }
-        updateRendering()
     }
 
     func placeOnPrimaryScreen() {
@@ -144,7 +172,7 @@ final class OverlayWindowController: NSObject {
 
     /// Lets one frame (or a short animation like the status bubble) draw while paused.
     func requestRedraw(for seconds: TimeInterval = 0.5) {
-        guard settings.townVisible, townView.isPaused || redrawTimer != nil else { return }
+        guard isShown, townView.isPaused || redrawTimer != nil else { return }
         townView.isPaused = false
         redrawTimer?.invalidate()
         let timer = Timer(timeInterval: seconds, target: self, selector: #selector(redrawExpired), userInfo: nil, repeats: false)

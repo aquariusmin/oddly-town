@@ -20,8 +20,19 @@ enum TownArt {
         "P": 0xE4C48F, // path
     ]
 
+    /// Textures are built once and shared by Ambient Mode and Town Mode.
+    private static var cache: [String: SKTexture] = [:]
+
+    static func cached(_ key: String, _ make: () -> SKTexture) -> SKTexture {
+        if let hit = cache[key] { return hit }
+        let texture = make()
+        cache[key] = texture
+        return texture
+    }
+
+    /// `name` must be unique per (rows, palette) pair: it's the cache key and the PNG override name.
     static func tex(_ name: String, _ rows: [String], palette: [Character: UInt32] = TownArt.palette) -> SKTexture {
-        PixelArt.override(named: name) ?? PixelArt.texture(rows, palette: palette)
+        cached(name) { PixelArt.override(named: name) ?? PixelArt.texture(rows, palette: palette) }
     }
 
     static func recolored(_ changes: [Character: UInt32]) -> [Character: UInt32] {
@@ -29,29 +40,73 @@ enum TownArt {
     }
 
     /// Window-light overlay: only the glass pixels, in warm yellow.
-    static func lights(_ rows: [String]) -> SKTexture {
-        PixelArt.texture(rows, palette: ["y": 0xFFD36E], only: ["y"])
+    static func lights(_ name: String, _ rows: [String]) -> SKTexture {
+        cached("\(name)-lights") { PixelArt.texture(rows, palette: ["y": 0xFFD36E], only: ["y"]) }
+    }
+
+    /// Centres of window clusters ('y' pixels), in sprite pixel coordinates with y up.
+    static func windowCenters(_ rows: [String]) -> [CGPoint] {
+        var points: [CGPoint] = []
+        for (r, row) in rows.enumerated() {
+            for (x, ch) in row.enumerated() where ch == "y" {
+                points.append(CGPoint(x: Double(x) + 0.5, y: Double(rows.count - r) - 0.5))
+            }
+        }
+        var clusters: [[CGPoint]] = []
+        for p in points {
+            if let i = clusters.firstIndex(where: { c in c.contains { abs($0.x - p.x) <= 2 && abs($0.y - p.y) <= 2 } }) {
+                clusters[i].append(p)
+            } else {
+                clusters.append([p])
+            }
+        }
+        return clusters.map { c in
+            CGPoint(x: c.map(\.x).reduce(0, +) / Double(c.count), y: c.map(\.y).reduce(0, +) / Double(c.count))
+        }
     }
 
     // MARK: Buildings
 
+    /// Red-roofed cottage: chimney, shingles, window flower boxes, door knob.
     static let cottageRows = [
-        "......kkkk......",
-        ".....krrrrk.....",
-        "....krrrrrrk....",
-        "...krrrrrrrrk...",
+        "...........kk...",
+        "...........SS...",
+        "......kkkk.SS...",
+        ".....krrrrkSS...",
+        "....krrrrrrkS...",
+        "...krrRrrRrrk...",
         "..krrrrrrrrrrk..",
-        ".krrrrrrrrrrrrk.",
+        ".krrRrrRrrRrrrk.",
         "kRRRRRRRRRRRRRRk",
         ".kwwwwwwwwwwwwk.",
         ".kwyywwwwwwyywk.",
         ".kwyywwkkwwyywk.",
-        ".kwwwwwddwwwwwk.",
-        ".kWWWWWddWWWWWk.",
+        ".kwpgwwddwwpgwk.",
+        ".kWWWWWdYWWWWWk.",
         ".kwwwwwddwwwwwk.",
         ".kSSSSSSSSSSSSk.",
     ]
-    static let blueRoof = recolored(["r": 0x5B7FC4, "R": 0x3F5E9A])
+
+    /// Blue house: attic window, shutters, pale wooden door.
+    static let blueHouseRows = [
+        "................",
+        "................",
+        "......kkkk......",
+        ".....kbbbbk.....",
+        "....kbbbbbbk....",
+        "...kbbbyybbbk...",
+        "..kbbbbyybbbbk..",
+        ".kbbbbbbbbbbbbk.",
+        "kBBBBBBBBBBBBBBk",
+        ".kwwwwwwwwwwwwk.",
+        ".kMyyMwwwwMyyMk.",
+        ".kMyyMwkkwMyyMk.",
+        ".kwwwwwmmwwwwwk.",
+        ".kWWWWWmYWWWWWk.",
+        ".kwwwwwmmwwwwwk.",
+        ".kSSSSSSSSSSSSk.",
+    ]
+    static let blueHousePalette = recolored(["b": 0x5B7FC4, "B": 0x3F5E9A, "w": 0xEDE7DA, "W": 0xD3CABA])
 
     static let workshopRows = [
         ".............kk...",
@@ -198,17 +253,6 @@ enum TownArt {
     static let sunRows = ["..YYY..", ".YYYYY.", "YYYYYYY", "YYYYYYY", "YYYYYYY", ".YYYYY.", "..YYY.."]
     static let moonRows = ["..ccc..", ".ccc...", "ccc....", "ccc....", "ccc....", ".ccc...", "..ccc.."]
     static let moonPalette: [Character: UInt32] = ["c": 0xF4F1DE]
-
-    // MARK: Residents
-
-    static func residentFrames(shirt: UInt32, hair: UInt32) -> (idle: SKTexture, walk: [SKTexture]) {
-        let colors: [Character: UInt32] = ["n": hair, "h": 0xF1C7A0, "s": shirt, "k": 0x3D405B]
-        let top = [".nnn.", "nnhhh", ".hhh.", "sssss", "hsssh", ".sss."]
-        let idle = PixelArt.texture(top + [".k.k.", ".k.k."], palette: colors)
-        let a = PixelArt.texture(top + [".k.k.", "k...k"], palette: colors)
-        let b = PixelArt.texture(top + ["..k..", "..k.."], palette: colors)
-        return (idle, [a, b])
-    }
 
     // MARK: Generated pieces
 

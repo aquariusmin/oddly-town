@@ -231,6 +231,12 @@ public struct TownLife: Sendable {
         return [index: plan]
     }
 
+    /// Demo Mode: make resident `index` do `plan` now. Normal life resumes when it ends.
+    public mutating func impose(_ plan: BehaviorPlan, on index: Int) {
+        guard residents.indices.contains(index) else { return }
+        assign(plan, to: index)
+    }
+
     // MARK: Private
 
     private mutating func assign(_ plan: BehaviorPlan, to index: Int) {

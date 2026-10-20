@@ -10,7 +10,7 @@ def rows(name):
     m = re.search(r'static let %s = \[([^\]]*)\]' % name, src)
     return re.findall(r'"([^"]*)"', m.group(1))
 pal = {k: int(v,16) for k, v in re.findall(r'"(.)": 0x([0-9A-Fa-f]{6})', src.split('static let palette')[1].split('\n    ]')[0])}
-W,H,S = 140,60,3
+W,H,S = 140,60,2
 def ground():
     ins=[2,1,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6]; out=[]
     for r in range(17):
@@ -46,8 +46,8 @@ def scene(level3=True, activity=True, night=False):
         draw(img, rows('fenceRows'),112,3); draw(img, rows('fenceRows'),123,3)
         draw(img, rows('wildflowerRows'),6,2); draw(img, rows('wildflowerRows'),62,2)
         draw(img, rows('lamppostRows'),95,13)
-        blue=dict(pal); blue.update({'r':0x5B7FC4,'R':0x3F5E9A})
-        draw(img,['PP']*6,85,8); draw(img,cot,78,13,blue)
+        blue=dict(pal); blue.update({'b':0x5B7FC4,'B':0x3F5E9A,'w':0xEDE7DA,'W':0xD3CABA})
+        draw(img,['PP']*6,85,8); draw(img,rows('blueHouseRows'),78,13,blue)
         draw(img, rows('wellRows'),62,13)
     if activity:
         draw(img,['PP']*6,108,8); draw(img, rows('workshopRows'),99,13)
@@ -69,23 +69,26 @@ def scene(level3=True, activity=True, night=False):
                 if c is not None:
                     px=3+x; py=H-1-(30+6-y)
                     img.putpixel((px,py),(c>>16,(c>>8)&255,c&255,255))
+    # Default decorations: bench in spot 1, flower box in spot 3.
+    draw(img,["MMMMMMMM", "mmmmmmmm", "M......M", "M......M"],30,2)
+    draw(img,[".p.Y.v.", "pgYgvgp", "MMMMMMM", ".M...M."],88,2)
     res={'n':0x4A3326,'h':0xF1C7A0,'s':0xE07A5F,'k':0x3D405B}
-    top=[".nnn.", "nnhhh", ".hhh.", "sssss", "hsssh", ".sss."]
-    draw(img, top+[".k.k.","k...k"], 28, 6, res)
-    res2=dict(res); res2.update({'s':0x81B29A,'n':0xC0703A}); draw(img, top+[".k.k.",".k.k."], 98, 6, res2)
+    top=["..nnn..", ".nnhhh.", "..hhh..", ".sssss.", ".hsssh.", "..sss.."]
+    draw(img, top+["..k.k..",".k...k."], 40, 6, res)
+    res2=dict(res); res2.update({'s':0x81B29A,'n':0xC0703A}); draw(img, top+["..k.k..","..k.k.."], 66, 6, res2)
     if night:
         px=img.load()
         for y in range(H):
             for x in range(W):
                 r,g,b,a=px[x,y]
                 if a: px[x,y]=(int(r*.5+41*.5),int(g*.5+51*.5),int(b*.5+107*.5),a)
-        for left,rs in [(14,cot),(78,cot),(99,rows('workshopRows')),(118,rows('readingNookRows'))]:
+        for left,rs in [(14,cot),(78,rows('blueHouseRows')),(99,rows('workshopRows')),(118,rows('readingNookRows'))]:
             draw(img, rs, left, 13, {'y':0xFFD36E}, only={'y'})
     return img.resize((W*S,H*S), Image.NEAREST)
-out=Image.new('RGBA',(420*2+20, 180*2+20),(236,236,240,255))
-dark=Image.new('RGBA',(420,180),(40,44,52,255))
+out=Image.new("RGBA",(280*2+20, 120*2+20),(236,236,240,255))
+dark=Image.new("RGBA",(280,120),(40,44,52,255))
 out.paste(scene(False,False), (0,0), scene(False,False))
-out.paste(scene(True,True), (440,0), scene(True,True))
-out.paste(dark,(0,200)); out.paste(scene(True,True,night=True),(0,200),scene(True,True,night=True))
-out.paste(dark,(440,200)); out.paste(scene(True,False),(440,200),scene(True,False))
+out.paste(scene(True,True), (300,0), scene(True,True))
+out.paste(dark,(0,140)); out.paste(scene(True,True,night=True),(0,140),scene(True,True,night=True))
+out.paste(dark,(300,140)); out.paste(scene(True,False),(300,140),scene(True,False))
 out.save(sys.argv[2])
