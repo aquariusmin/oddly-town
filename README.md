@@ -3,7 +3,7 @@
 > 컴퓨터를 쓰는 동안 화면 한쪽에서 작은 마을이 조용히 살아 움직이고, 시간과 사용 패턴에 따라 조금씩 자라는 macOS 메뉴 막대 앱.
 > **Less Distraction, More Life.**
 
-**버전:** 0.2.0-alpha · **플랫폼:** macOS 14+ (Apple Silicon 우선) · **상태:** 알파 — v0.2 macOS 빌드 확인 대기 중 ([알려진 문제](#알려진-문제--미검증-사항))
+**버전:** 0.2.0-alpha · **플랫폼:** macOS 14+ (Apple Silicon 우선) · **상태:** 알파 — Apple Silicon Mac에서 v0.2 빌드·테스트(70개) 통과, 실행 화면은 확인 중 ([알려진 문제](#알려진-문제--미검증-사항))
 
 ![에셋 프리뷰](docs/art-preview.png)
 
@@ -132,16 +132,16 @@ scripts/test-core-docker.sh      # Linux/Docker (공식 swift:6.0 이미지, 코
 
 | 환경 | v0.1 | v0.2 |
 |---|---|---|
-| Apple Silicon Mac, Command Line Tools (macOS 27 SDK) | 빌드·실행 확인, `swift test` 36개 통과 | **아직 빌드하지 않음** |
+| Apple Silicon Mac, Command Line Tools (macOS 27 SDK) | 빌드·실행 확인, `swift test` 36개 통과 | `swift build` 성공, `swift test` **70개 통과** (12개 스위트) |
 | Linux (WSL2) + Docker `swift:6.0-jammy` | 코어 테스트 36개 통과 | 코어 테스트 **70개 통과** |
 
-v0.2의 macOS 앱 코드(AppKit/SpriteKit/SwiftUI)는 Linux에서 작성되어 아직 컴파일되지 않았습니다. 코드 리뷰로만 검토했습니다.
+v0.2 코드는 Linux에서 작성되었지만, Mac에서 수정 없이 첫 빌드에 성공했습니다. 컴파일러 경고는 사용하지 않는 변수 1건(`TownScene.swift`의 `index`)뿐입니다.
 
 빌드 중 `ld: warning: search path ... not found` 경고는 Command Line Tools 환경에서 나오는 것이므로 무시해도 됩니다.
 
 ## 알려진 문제 / 미검증 사항
 
-- **v0.2 macOS 타깃은 아직 Mac에서 빌드·실행되지 않았습니다.** 첫 빌드에서 컴파일 오류가 나올 수 있습니다.
+- v0.2는 빌드와 자동 테스트만 확인했습니다. **실행 화면(Town Mode, 주민 행동, 이벤트, 장식)은 아직 확인되지 않았습니다.**
 - 성능 목표(메모리 150MB 이하, 평균 CPU 1% 이하)는 v0.1·v0.2 모두 **측정되지 않았습니다.**
 - [docs/TESTING.md](docs/TESTING.md)의 수동 시나리오 7개(장시간 방치, 앱 전환, 클릭 통과, Town Mode 편집, 재실행, 잠자기, 외장 모니터)는 확인되지 않았습니다.
 - 투명 영역만 클릭 통과하는 기능 없음 (위 "조작 방법" 참고).
