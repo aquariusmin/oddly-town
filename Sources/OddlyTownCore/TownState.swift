@@ -1,9 +1,11 @@
 import Foundation
 
-/// Everything that grows. Persisted as JSON; decoding is lenient so older or
-/// partially damaged files load with defaults instead of failing.
+/// Everything that grows, plus the user's decorations. Persisted as JSON; decoding is
+/// lenient so older (v1) or partially damaged files load with defaults instead of failing.
+///
+/// Schema history: v1 (0.1.0) — growth and activity. v2 (0.2.0) — adds `decor`.
 public struct TownState: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public var schemaVersion: Int
     public var createdAt: Date
@@ -14,13 +16,16 @@ public struct TownState: Codable, Equatable, Sendable {
     /// Day key ("yyyy-MM-dd") that `growthSecondsOnCapDay` belongs to.
     public var capDay: String?
     public var growthSecondsOnCapDay: TimeInterval
+    /// Town Mode decorations. v1 files get `DecorLayout.standard`.
+    public var decor: DecorLayout
 
     public init(
         createdAt: Date = Date(),
         growthSeconds: TimeInterval = 0,
         activitySeconds: [ActivityCategory: TimeInterval] = [:],
         capDay: String? = nil,
-        growthSecondsOnCapDay: TimeInterval = 0
+        growthSecondsOnCapDay: TimeInterval = 0,
+        decor: DecorLayout = .standard
     ) {
         self.schemaVersion = Self.currentSchemaVersion
         self.createdAt = createdAt
@@ -28,6 +33,7 @@ public struct TownState: Codable, Equatable, Sendable {
         self.activitySeconds = activitySeconds
         self.capDay = capDay
         self.growthSecondsOnCapDay = growthSecondsOnCapDay
+        self.decor = decor
     }
 
     public func activitySeconds(for category: ActivityCategory) -> TimeInterval {
@@ -35,12 +41,13 @@ public struct TownState: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, createdAt, growthSeconds, activitySeconds, capDay, growthSecondsOnCapDay
+        case schemaVersion, createdAt, growthSeconds, activitySeconds, capDay, growthSecondsOnCapDay, decor
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = (try? c.decodeIfPresent(Int.self, forKey: .schemaVersion)) ?? Self.currentSchemaVersion
+        // Older files are upgraded in memory and written back as the current version on next save.
+        schemaVersion = Self.currentSchemaVersion
         createdAt = (try? c.decodeIfPresent(Date.self, forKey: .createdAt)) ?? Date()
         growthSeconds = Self.sanitize((try? c.decodeIfPresent(Double.self, forKey: .growthSeconds)) ?? 0)
         // Decode as [String: Double] so an unknown category key doesn't discard the rest.
@@ -52,6 +59,7 @@ public struct TownState: Codable, Equatable, Sendable {
         activitySeconds = activity
         capDay = try? c.decodeIfPresent(String.self, forKey: .capDay)
         growthSecondsOnCapDay = Self.sanitize((try? c.decodeIfPresent(Double.self, forKey: .growthSecondsOnCapDay)) ?? 0)
+        decor = (try? c.decodeIfPresent(DecorLayout.self, forKey: .decor)) ?? .standard
     }
 
     static func sanitize(_ value: Double) -> Double {
