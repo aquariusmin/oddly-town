@@ -7,7 +7,7 @@
 | `swift test` | Mac | `OddlyTownCore` 전체 |
 | `scripts/test-core-docker.sh` | Linux + Docker | 동일 (macOS 타깃은 자동 제외) |
 
-v0.1.0-alpha 작성 시점 결과: **Linux Docker (`swift:6.0-jammy`)에서 36개 테스트 통과.** Mac에서는 아직 실행하지 않았습니다.
+v0.1.0-alpha 결과: **Linux Docker (`swift:6.0-jammy`)에서 36개 테스트 통과.** Mac에서는 앱 빌드·실행만 확인했고 `swift test`는 아직 실행하지 않았습니다.
 
 검증 항목:
 - 성장 엔진: 레벨 경계, 일일 상한, 다음 날 초기화, 개발자 모드 상한 해제, 잘못된 값 무시, 진행률

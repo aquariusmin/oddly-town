@@ -2,6 +2,13 @@
 
 ## [0.1.0-alpha] — 2026-10-21
 
+### Fixed
+- macOS에서 `CGRect` 기하 속성(`minX` 등)을 찾지 못하던 문제: `OverlayLayout`에 `import CoreGraphics` 추가 (Linux Foundation과의 차이).
+- Demo 낮·밤 순환 토글의 배타적 접근(Exclusivity) 위반 컴파일 오류.
+
+### Verified
+- Apple Silicon Mac (Command Line Tools, macOS 27 SDK)에서 `swift run OddlyTown` 빌드 및 실행.
+
 ### Added
 - Swift Package: `OddlyTownCore` (Foundation 전용) + `OddlyTown` macOS 앱 타깃(macOS에서만 활성).
 - `scripts/build-app.sh`: `build/Oddly Town.app` 생성, ad-hoc 서명.
@@ -20,5 +27,5 @@
 - 테스트 36개: 성장, 일일 상한, 카테고리 규칙, 분류기, 누적기, 저장/복구, 설정, 레이아웃, 낮·밤, 통합 시뮬레이션.
 
 ### Not yet verified
-- macOS 타깃 컴파일 및 실행 (작성 환경이 Linux).
+- 수동 테스트 체크리스트, Mac에서의 `swift test`, `.app` 번들 빌드.
 - 성능 목표 수치.

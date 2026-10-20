@@ -2,7 +2,7 @@
 
 > 컴퓨터를 쓰는 동안 화면 한쪽에서 작은 마을이 살아 움직이고, 시간과 사용 패턴에 따라 조금씩 자라는 macOS 메뉴 막대 앱.
 
-**버전:** 0.1.0-alpha · **플랫폼:** macOS 14+ (Apple Silicon 우선) · **상태:** 초기 알파
+**버전:** 0.1.0-alpha · **플랫폼:** macOS 14+ (Apple Silicon 우선) · **상태:** 초기 알파 — Apple Silicon Mac에서 빌드·실행 확인
 
 ![에셋 프리뷰](docs/art-preview.png)
 
@@ -40,11 +40,11 @@
 
 Swift 5.9+ · AppKit(오버레이 패널, 메뉴 막대) · SpriteKit(렌더링) · SwiftUI(상태/설정 창) · Foundation `Codable` + JSON 파일 저장. 외부 의존성 없음.
 
-**Xcode 프로젝트 대신 Swift Package를 쓰는 이유**: 이 저장소는 Xcode가 없는 Linux 환경에서 작성되었고 XcodeGen도 설치되어 있지 않았습니다. 손으로 만든 `.xcodeproj`는 깨지기 쉽기 때문에 Swift Package로 구성했습니다. Xcode에서 `Package.swift`를 바로 열 수 있고, `.app` 번들은 스크립트로 만듭니다.
+**Xcode 프로젝트 대신 Swift Package를 쓰는 이유**: 손으로 만든 `.xcodeproj`는 깨지기 쉽고, 별도 도구(XcodeGen 등) 없이 Command Line Tools만으로 빌드할 수 있기 때문입니다. Xcode에서 `Package.swift`를 바로 열 수 있고, `.app` 번들은 스크립트로 만듭니다.
 
 ## 설치 및 실행 (Mac)
 
-요구 사항: macOS 14 이상, Xcode 15 이상(또는 Command Line Tools의 Swift 5.9+).
+요구 사항: macOS 14 이상, Xcode 15 이상 **또는** Command Line Tools(Swift 5.9+). Xcode 없이 Command Line Tools만으로도 빌드됩니다 (`xcode-select --install`).
 
 ```bash
 git clone <repo> oddly-town && cd oddly-town
@@ -74,14 +74,21 @@ scripts/test-core-docker.sh      # Linux/Docker (공식 swift:6.0 이미지, 코
 
 `OddlyTownCore`(성장 엔진, 분류기, 누적기, 저장, 레이아웃 계산)는 Foundation만 사용하므로 Linux에서도 테스트됩니다. UI·시스템 통합은 [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트로 확인합니다.
 
-## 개발 환경 (이 버전이 작성된 환경)
+## 개발 환경
 
-- Linux (WSL2) + Docker `swift:6.0-jammy`에서 코어 빌드 및 테스트 36개 통과.
-- **macOS 앱 타깃은 이 환경에서 컴파일·실행되지 않았습니다.** Mac에서의 첫 빌드 때 컴파일 오류가 있을 수 있습니다.
+| 환경 | 확인 내용 |
+|---|---|
+| Apple Silicon Mac, Command Line Tools (macOS 27 SDK) | `swift run OddlyTown` 빌드 및 실행 확인 |
+| Linux (WSL2) + Docker `swift:6.0-jammy` | 코어 빌드, 테스트 36개 통과 |
+
+코드는 Linux에서 작성되었고 Mac에서 처음 빌드할 때 macOS 전용 컴파일 오류 2건을 수정했습니다 ([CHANGELOG.md](CHANGELOG.md)).
+
+빌드 중 `ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found` 경고는 Command Line Tools만 설치된 환경에서 나오는 것으로, 무시해도 됩니다.
 
 ## 알려진 문제 / 미검증 사항
 
-- macOS 타깃 미컴파일: AppKit/SpriteKit/SwiftUI 코드는 코드 리뷰로만 검토되었습니다.
+- [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트(클릭 통과, 드래그, 설정 창, 활동 감지, Demo Mode 등)는 아직 항목별로 확인되지 않았습니다.
+- Mac에서 `swift test`와 `scripts/build-app.sh`(.app 번들)는 아직 실행되지 않았습니다.
 - 성능 목표(메모리 150MB 이하, 평균 CPU 1% 이하, 15FPS)는 **아직 측정되지 않았습니다.** 측정 방법은 [docs/TESTING.md](docs/TESTING.md).
 - 전체 화면 앱 위 표시(`fullScreenAuxiliary`), 다중 모니터, 투명 영역 클릭 동작은 실기기 확인이 필요합니다.
 - 창 크기는 설정의 슬라이더로만 바꿀 수 있습니다(테두리 드래그 리사이즈 없음, 비율 고정 7:3).
