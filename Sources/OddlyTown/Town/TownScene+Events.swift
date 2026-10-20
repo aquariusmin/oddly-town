@@ -97,12 +97,13 @@ extension TownScene {
         }
         let order: [TownFeature] = [.workshop, .readingNook, .secondHouse, .well, .artGarden, .lamppost,
                                     .youngTree, .picketFence, .wildflowers, .festivalBunting]
+        if cottageBounds.contains(point) { return .cottage }
+        // Test each sprite, not the union: bunting and wildflowers span most of the town.
         for feature in order where visibleFeatures.contains(feature) {
-            if let bounds = featureBounds[feature] ?? accumulatedBounds(of: feature), bounds.contains(point) {
+            if featureNodes[feature]?.children.contains(where: { $0.frame.contains(point) }) == true {
                 return .feature(feature)
             }
         }
-        if cottageBounds.contains(point) { return .cottage }
         return nil
     }
 

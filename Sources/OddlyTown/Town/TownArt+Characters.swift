@@ -21,10 +21,11 @@ extension TownArt {
         ResidentLook(name: "Juno", shirt: 0xF2CC8F, hair: 0x2B2D42, trousers: 0x6D597A),
     ]
 
-    private static let head = ["..nnn..", ".nnhhh.", "..hhh.."]
-    private static let body = [".sssss.", ".hsssh.", "..sss.."]
-    private static let legs = ["..k.k..", "..k.k.."]
+    private static let head: [String] = ["..nnn..", ".nnhhh.", "..hhh.."]
+    private static let body: [String] = [".sssss.", ".hsssh.", "..sss.."]
+    private static let legs: [String] = ["..k.k..", "..k.k.."]
 
+    // Explicitly typed pieces keep this literal quick to type-check.
     static let residentRows: [String: [String]] = [
         "idle": head + body + legs,
         "walkA": head + body + ["..k.k..", ".k...k."],

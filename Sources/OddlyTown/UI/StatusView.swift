@@ -76,7 +76,7 @@ struct StatusView: View {
 
     private var hints: [String] {
         model.rules.activityUnlocks.compactMap { unlock in
-            guard !status.features.contains(unlock.feature) else { return nil }
+            guard !status.unlocked.contains(unlock.feature) else { return nil }
             let have = status.activitySeconds[unlock.category] ?? 0
             let need = max(0, unlock.requiredSeconds - have)
             var hint = "\(unlock.category.displayName) apps → \(unlock.feature.displayName)"

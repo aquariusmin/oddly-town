@@ -29,6 +29,7 @@ final class ResidentSprite {
         dots.position = CGPoint(x: 1, y: 9)
         dots.zPosition = 1
         dots.alpha = 0
+        dots.name = "dots"
         node.addChild(dots)
     }
 
@@ -44,14 +45,18 @@ final class ResidentSprite {
         dots.alpha = 0
 
         var steps: [SKAction] = []
-        if instant {
+        // Already indoors and staying home (night): just wait, don't pop out of the door.
+        let stayingIn = !instant && isIndoors && plan.activity == .returningHome && abs(target.x - node.position.x) < 1
+        if stayingIn {
+            steps.append(.wait(forDuration: plan.duration))
+        } else if instant {
             node.position = CGPoint(x: target.x, y: TownScene.pathY)
             node.alpha = plan.activity == .returningHome ? 0 : 1
         } else if isIndoors {
             steps.append(.fadeIn(withDuration: 0.6)) // stepping out of the door
         }
 
-        if node.position.y != TownScene.pathY {
+        if !stayingIn && node.position.y != TownScene.pathY {
             steps.append(.moveTo(y: TownScene.pathY, duration: 0.4)) // get up from the bench
         }
         let distance = target.x - node.position.x
@@ -64,13 +69,15 @@ final class ResidentSprite {
                 .repeat(.animate(with: frames.walk, timePerFrame: 0.25), count: max(1, Int(duration / 0.5))),
             ]))
         }
-        steps.append(.setTexture(frames.idle))
-        if let face {
-            facing = face
-            steps.append(.scaleX(to: face, duration: 0))
+        if !stayingIn {
+            steps.append(.setTexture(frames.idle))
+            if let face {
+                facing = face
+                steps.append(.scaleX(to: face, duration: 0))
+            }
+            steps.append(activity(plan, at: target))
+            steps.append(.setTexture(frames.idle))
         }
-        steps.append(activity(plan, at: target))
-        steps.append(.setTexture(frames.idle))
         steps.append(.run { [weak self] in
             MainActor.assumeIsolated {
                 guard let self, self.generation == myGeneration else { return }
@@ -109,16 +116,19 @@ final class ResidentSprite {
                                           .setTexture(frames.idle), .wait(forDuration: 1.2)])
             return .repeat(bend, count: max(1, Int(d / 2.8)))
         case .socializing:
-            // A couple of tiny "…" now and then; mostly just standing together.
-            dots.run(.sequence([
+            // A couple of tiny "…" now and then, once they've met; mostly just standing together.
+            let showDots = SKAction.sequence([
                 .wait(forDuration: 1.5 + Double(index)),
                 .fadeIn(withDuration: 0.2), .wait(forDuration: 1.4), .fadeOut(withDuration: 0.3),
                 .wait(forDuration: 4),
                 .fadeIn(withDuration: 0.2), .wait(forDuration: 1.2), .fadeOut(withDuration: 0.3),
-            ]), withKey: "dots")
+            ])
             let gesture = SKAction.sequence([.setTexture(frames.talk), .wait(forDuration: 0.8),
                                              .setTexture(frames.idle), .wait(forDuration: 1.8)])
-            return .repeat(gesture, count: max(1, Int(d / 2.6)))
+            return .sequence([
+                .run(showDots, onChildWithName: "dots"),
+                .repeat(gesture, count: max(1, Int(d / 2.6))),
+            ])
         case .celebrating:
             let hop = SKAction.sequence([
                 .setTexture(frames.cheer), .moveBy(x: 0, y: 1, duration: 0.15), .moveBy(x: 0, y: -1, duration: 0.15),
