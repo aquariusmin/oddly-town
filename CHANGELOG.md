@@ -9,6 +9,7 @@
 
 ### Verified
 - Apple Silicon Mac (Command Line Tools, macOS 27 SDK)에서 `swift run OddlyTown` 빌드 및 실행.
+- 같은 환경에서 `swift test` 36개 통과 (7개 스위트).
 
 ### Added
 - Swift Package: `OddlyTownCore` (Foundation 전용) + `OddlyTown` macOS 앱 타깃(macOS에서만 활성).
@@ -28,5 +29,5 @@
 - 테스트 36개: 성장, 일일 상한, 카테고리 규칙, 분류기, 누적기, 저장/복구, 설정, 레이아웃, 낮·밤, 통합 시뮬레이션.
 
 ### Not yet verified
-- 수동 테스트 체크리스트, Mac에서의 `swift test`, `.app` 번들 빌드.
+- 수동 테스트 체크리스트, `.app` 번들 빌드.
 - 성능 목표 수치.

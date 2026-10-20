@@ -78,17 +78,17 @@ scripts/test-core-docker.sh      # Linux/Docker (공식 swift:6.0 이미지, 코
 
 | 환경 | 확인 내용 |
 |---|---|
-| Apple Silicon Mac, Command Line Tools (macOS 27 SDK) | `swift run OddlyTown` 빌드 및 실행 확인 |
+| Apple Silicon Mac, Command Line Tools (macOS 27 SDK) | `swift run OddlyTown` 빌드 및 실행 확인, `swift test` 36개 통과 |
 | Linux (WSL2) + Docker `swift:6.0-jammy` | 코어 빌드, 테스트 36개 통과 |
 
-코드는 Linux에서 작성되었고 Mac에서 처음 빌드할 때 macOS 전용 컴파일 오류 2건을 수정했습니다 ([CHANGELOG.md](CHANGELOG.md)).
+코드는 Linux에서 작성되었고 Mac에서 처음 빌드할 때 macOS 전용 문제 3건(컴파일 오류 2건, XCTest 부재)을 수정했습니다 ([CHANGELOG.md](CHANGELOG.md)).
 
 빌드 중 `ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found` 경고는 Command Line Tools만 설치된 환경에서 나오는 것으로, 무시해도 됩니다.
 
 ## 알려진 문제 / 미검증 사항
 
 - [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트(클릭 통과, 드래그, 설정 창, 활동 감지, Demo Mode 등)는 아직 항목별로 확인되지 않았습니다.
-- Mac에서 `swift test`와 `scripts/build-app.sh`(.app 번들)는 아직 실행되지 않았습니다.
+- Mac에서 `scripts/build-app.sh`(.app 번들)는 아직 실행되지 않았습니다.
 - 성능 목표(메모리 150MB 이하, 평균 CPU 1% 이하, 15FPS)는 **아직 측정되지 않았습니다.** 측정 방법은 [docs/TESTING.md](docs/TESTING.md).
 - 전체 화면 앱 위 표시(`fullScreenAuxiliary`), 다중 모니터, 투명 영역 클릭 동작은 실기기 확인이 필요합니다.
 - 창 크기는 설정의 슬라이더로만 바꿀 수 있습니다(테두리 드래그 리사이즈 없음, 비율 고정 7:3).

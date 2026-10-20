@@ -13,9 +13,10 @@
 - [x] 전면 앱 감지(옵트인) → 5개 카테고리 → 4개 카테고리별 시설
 - [x] 상태 말풍선, 상태 창, 설정 창, 기록/마을 초기화
 - [x] 개발자 모드(별도 데이터, 시간 가속) + Demo Mode
-- [x] Core 단위 테스트 36개 (Linux Docker에서 통과)
+- [x] Core 단위 테스트 36개 (Mac, Linux Docker 모두 통과)
 - [x] Mac에서 첫 빌드 및 컴파일 오류 수정
-- [ ] Mac에서 `swift test`, `scripts/build-app.sh` 실행 ← 다음 작업
+- [x] Mac에서 `swift test` 통과 (36개)
+- [ ] Mac에서 `scripts/build-app.sh` 실행 ← 다음 작업
 - [ ] 성능 측정 (Activity Monitor / Instruments) 및 결과 기록
 - [ ] 수동 테스트 체크리스트 통과 ([docs/TESTING.md](docs/TESTING.md))
 
