@@ -31,6 +31,7 @@ final class TownScene: SKScene {
     let world = SKNode()
     let sky = SKNode()
     let starField = SKNode()
+    let fireflies = SKNode()
     var tintables: [SKSpriteNode] = []
     var featureNodes: [TownFeature: SKNode] = [:]
     var featureBounds: [TownFeature: CGRect] = [:]
@@ -41,6 +42,8 @@ final class TownScene: SKScene {
     var sun = SKSpriteNode()
     var moon = SKSpriteNode()
     var backdrop: SKSpriteNode?
+    /// Capture Studio only: full-view backdrop and camera (nil in Ambient and Town Mode).
+    var capture: CaptureRig?
 
     /// Per slot: one prebuilt node per item (only the placed one is shown).
     var slotItems: [[DecorItem: SKNode]] = []
@@ -144,6 +147,12 @@ final class TownScene: SKScene {
         tagLabel.isHidden = text == nil
     }
 
+    /// Only Capture Studio has per-frame work (the follow camera); other modes return at once.
+    override func didFinishUpdate() {
+        guard capture != nil else { return }
+        stepCaptureCamera()
+    }
+
     // MARK: Build
 
     private func build() {
@@ -199,6 +208,36 @@ final class TownScene: SKScene {
             sky.addChild(body)
         }
         moon.alpha = 0
+        let halo = SKSpriteNode(texture: TownArt.cached("moon-halo") { PixelArt.glow(radius: 7, rgb: 0xF4F1DE) })
+        halo.position = CGPoint(x: 3.5, y: 3.5)
+        halo.zPosition = -1
+        moon.addChild(halo)
+
+        // Fireflies drift around the trees and flowers at night.
+        let fly = TownArt.tex("firefly", ["c"], palette: ["c": 0xE8F57A])
+        let homes: [(CGFloat, CGFloat)] = [(6, 18), (12, 24), (37, 20), (44, 26), (70, 17), (58, 14), (128, 16)]
+        for (index, (x, y)) in homes.enumerated() {
+            let node = SKSpriteNode(texture: fly)
+            node.anchorPoint = .zero
+            node.position = CGPoint(x: x, y: y)
+            node.zPosition = 99
+            fireflies.addChild(node)
+            let dx = CGFloat(index % 3) - 1, dy = CGFloat(index % 2 == 0 ? 1 : -1)
+            let wander = SKAction.sequence([
+                .moveBy(x: 2 + dx, y: 2 * dy, duration: 1.7 + Double(index) * 0.2),
+                .moveBy(x: -1, y: -dy, duration: 1.3),
+                .moveBy(x: -(1 + dx), y: -dy, duration: 1.5 + Double(index % 3) * 0.3),
+            ])
+            let blink = SKAction.sequence([
+                .wait(forDuration: 0.6 + Double(index) * 0.45),
+                .fadeAlpha(to: 0.15, duration: 0.5),
+                .fadeAlpha(to: 1, duration: 0.4),
+            ])
+            node.run(.repeatForever(wander))
+            node.run(.repeatForever(blink))
+        }
+        fireflies.alpha = 0
+        world.addChild(fireflies)
 
         let clouds: [(name: String, rows: [String], x: CGFloat, y: CGFloat, speed: CGFloat)] = [
             ("cloud", TownArt.cloudRows, 18, 47, 1.6),
@@ -249,6 +288,7 @@ final class TownScene: SKScene {
         let lamp = featureNode(.lamppost)
         sprite(TownArt.tex("lamppost", TownArt.lamppostRows), left: 95, y: 13, parent: lamp)
         lampGlows.append(glow(radius: 5, center: CGPoint(x: 96.5, y: 22.5), parent: lamp))
+        lampGlows.append(groundLight(centerX: 96.5, y: 5, width: 19, parent: lamp))
 
         let secondHouse = featureNode(.secondHouse)
         house(TownArt.blueHouseRows, palette: TownArt.blueHousePalette, name: "house-blue", left: 78, doorX: 85,
@@ -320,6 +360,7 @@ final class TownScene: SKScene {
                 }
                 if item == .lantern {
                     slotGlows.append(glow(radius: 4, center: CGPoint(x: origin.x + 1.5, y: origin.y + 5), parent: holder))
+                    slotGlows.append(groundLight(centerX: origin.x + 1.5, y: origin.y - 1, width: 11, parent: holder))
                 }
                 items[item] = holder
             }
@@ -441,6 +482,8 @@ final class TownScene: SKScene {
             let halo = glow(radius: 3, center: CGPoint(x: left + center.x, y: 13 + center.y), parent: parent)
             lights.append((owner, halo))
         }
+        // Warm light spilling from the door onto the path.
+        lights.append((owner, groundLight(centerX: doorX + 1, y: 5, width: 11, parent: parent)))
         if let owner { featureBounds[owner] = body.frame }
         return body
     }
@@ -458,6 +501,17 @@ final class TownScene: SKScene {
         let node = SKSpriteNode(texture: TownArt.cached("glow-\(radius)") { PixelArt.glow(radius: radius, rgb: 0xFFD36E) })
         node.position = center
         node.zPosition = 95
+        node.alpha = 0
+        parent.addChild(node)
+        return node
+    }
+
+    /// Flat pool of light on the ground (lamps, lanterns, open doors). Starts dark.
+    private func groundLight(centerX: CGFloat, y: CGFloat, width: Int, parent: SKNode) -> SKSpriteNode {
+        let node = SKSpriteNode(texture: TownArt.cached("ground-light-\(width)") { PixelArt.groundLight(width: width, rgb: 0xFFD36E) })
+        node.anchorPoint = CGPoint(x: 0.5, y: 0)
+        node.position = CGPoint(x: centerX, y: y)
+        node.zPosition = -5 // on the ground, under every sprite
         node.alpha = 0
         parent.addChild(node)
         return node
@@ -537,6 +591,8 @@ final class TownScene: SKScene {
         for light in lights { fade(light.node, to: lateNight ? 0 : lightsOn, duration: duration) }
         for glow in lampGlows + slotGlows { fade(glow, to: lightsOn, duration: duration) }
         fade(starField, to: phase == .night ? 1 : 0, duration: duration)
+        fade(fireflies, to: phase == .night ? 1 : 0, duration: duration)
+        captureBackdropFollow(phase, animated: animated)
         fade(sun, to: phase == .night ? 0 : 1, duration: duration)
         fade(moon, to: phase == .night ? 1 : 0, duration: duration)
     }

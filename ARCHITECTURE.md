@@ -40,6 +40,7 @@
 | Menu Bar | `System/MenuBarController.swift` | 메뉴를 열 때마다 다시 구성, Town Mode 전환, Developer/Demo 하위 메뉴 |
 | Ambient Mode | `System/OverlayWindowController.swift` | 투명 non-activating 패널, 정수 배율 크기, 클릭 통과, 창 레벨, Spaces, 렌더링 on/off, Town Mode 중 일시 중단 |
 | Town Mode | `UI/TownModeWindowController.swift`, `UI/TownModePanel.swift` | 일반 창 + 6× 장면 + 정보/장식 패널. 닫으면 해제 |
+| Capture Studio | `UI/CaptureWindowController.swift`, `Town/TownScene+Capture.swift`, `OddlyTownCore/Capture.swift` | 녹화용 테두리 없는 창. 정수 배율, 기기 픽셀 스냅 카메라, 배경, 프리셋, 단축키. Demo 상태만 사용. 닫으면 해제. 프레임마다 실행하는 로직(`didFinishUpdate`의 카메라)은 이 모드에만 있음 |
 | 장면 | `Town/TownScene*.swift` | 노드 1회 생성, 스냅샷 적용, 주민 행동 재생, 이벤트 연출, 선택 |
 | 아트 | `Town/TownArt*.swift`, `Town/PixelArt.swift` | ASCII 픽셀맵 → 텍스처(캐시), PNG 교체 지점 |
 | 성장 | `OddlyTownCore/GrowthEngine.swift`, `GrowthRules.swift` | (상태, 시간, 활동) → 새 상태, 레벨, 해금 |
