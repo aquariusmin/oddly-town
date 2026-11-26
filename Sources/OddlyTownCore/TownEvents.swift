@@ -20,15 +20,18 @@ public struct TownEventRule: Sendable {
     public let phases: Set<DayPhase>
     public let minimumLevel: Int
     public let minimumResidents: Int
+    /// Weather it can start in.
+    public let weathers: Set<Weather>
 
     public init(kind: TownEventKind, weight: Double, duration: TimeInterval, phases: Set<DayPhase>,
-                minimumLevel: Int = 1, minimumResidents: Int = 1) {
+                minimumLevel: Int = 1, minimumResidents: Int = 1, weathers: Set<Weather> = [.clear]) {
         self.kind = kind
         self.weight = weight
         self.duration = duration
         self.phases = phases
         self.minimumLevel = minimumLevel
         self.minimumResidents = minimumResidents
+        self.weathers = weathers
     }
 }
 
@@ -50,10 +53,11 @@ public struct EventRules: Sendable {
         minimumGap: 25 * 60,
         chancePerMinute: 0.15,
         rules: [
+            // Cats stay out of rain and snow; travellers and neighbours don't mind snow.
             TownEventRule(kind: .strayCat, weight: 3, duration: 40, phases: [.dawn, .day, .dusk]),
-            TownEventRule(kind: .traveler, weight: 2, duration: 70, phases: [.day]),
+            TownEventRule(kind: .traveler, weight: 2, duration: 70, phases: [.day], weathers: [.clear, .snow]),
             TownEventRule(kind: .gathering, weight: 2, duration: 60, phases: [.day, .dusk],
-                          minimumLevel: 2, minimumResidents: 2),
+                          minimumLevel: 2, minimumResidents: 2, weathers: [.clear, .snow]),
         ]
     )
 
@@ -69,13 +73,16 @@ public struct EventContext: Equatable, Sendable {
     public var residentCount: Int
     /// Nobody can see the town (hidden, display asleep): don't start anything.
     public var isVisible: Bool
+    public var weather: Weather
 
-    public init(level: Int, phase: DayPhase, lateNight: Bool, residentCount: Int, isVisible: Bool) {
+    public init(level: Int, phase: DayPhase, lateNight: Bool, residentCount: Int, isVisible: Bool,
+                weather: Weather = .clear) {
         self.level = level
         self.phase = phase
         self.lateNight = lateNight
         self.residentCount = residentCount
         self.isVisible = isVisible
+        self.weather = weather
     }
 }
 
@@ -104,7 +111,8 @@ public struct EventScheduler: Sendable {
     public func eligibleRules(for context: EventContext) -> [TownEventRule] {
         guard context.isVisible, !context.lateNight else { return [] }
         return rules.rules.filter {
-            $0.phases.contains(context.phase) && context.level >= $0.minimumLevel && context.residentCount >= $0.minimumResidents
+            $0.phases.contains(context.phase) && $0.weathers.contains(context.weather)
+                && context.level >= $0.minimumLevel && context.residentCount >= $0.minimumResidents
         }
     }
 

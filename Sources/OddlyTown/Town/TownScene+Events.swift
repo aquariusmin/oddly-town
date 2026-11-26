@@ -126,7 +126,7 @@ extension TownScene {
         switch selection {
         case .resident(let index):
             residents[index].node.addChild(selectionArrow)
-            selectionArrow.position = CGPoint(x: 0, y: 11)
+            selectionArrow.position = CGPoint(x: 0, y: residentArrowHeight)
             selectionArrow.zPosition = 10
         case .slot(let slot):
             world.addChild(selectionArrow)

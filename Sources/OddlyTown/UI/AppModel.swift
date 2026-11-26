@@ -11,6 +11,7 @@ struct TownStatus {
     var unlocked: Set<TownFeature> = []
     var isDemo: Bool
     var season: Season = .summer
+    var weather: Weather = .clear
 }
 
 /// Text for Town Mode's "selected" panel.

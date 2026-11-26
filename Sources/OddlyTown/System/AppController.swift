@@ -10,6 +10,7 @@ struct DemoState {
     var extras: Set<TownFeature> = []
     var decor: DecorLayout
     var season: Season?         // nil = follow the real calendar (and the Seasons setting)
+    var weather: Weather?       // nil = the real forecast for this town
 }
 
 /// Wires the pure core (growth, activity, behaviour, events, persistence) to the macOS
@@ -226,7 +227,8 @@ final class AppController: NSObject {
         guard let snapshot = lastSnapshot else { return }
         let context = EventContext(level: snapshot.level, phase: snapshot.phase, lateNight: snapshot.lateNight,
                                    residentCount: snapshot.residentCount,
-                                   isVisible: overlay.isAnimating || townMode != nil || captureStudio != nil)
+                                   isVisible: overlay.isAnimating || townMode != nil || captureStudio != nil,
+                                   weather: snapshot.weather)
         apply(events.update(now: now, elapsed: elapsed, context: context, using: &eventRNG))
     }
 
@@ -482,13 +484,15 @@ final class AppController: NSObject {
 
     private func currentSnapshot(now: Date) -> TownSnapshot {
         if let demo {
+            let season = demo.season ?? model.settings.seasons.season(at: now)
             return TownSnapshot.make(
                 level: demo.level,
                 features: demoUnlocked(demo),
                 decor: demo.decor,
                 phase: demo.phase ?? DayPhase.at(now),
                 lateNight: demo.phase == nil && TownSnapshot.isLateNight(now),
-                season: demo.season ?? model.settings.seasons.season(at: now)
+                season: season,
+                weather: demo.weather ?? WeatherForecast.weather(at: now, season: season, seed: state.weatherSeed)
             )
         }
         return TownSnapshot.make(state: state, engine: engine, now: now, seasons: model.settings.seasons)
@@ -531,7 +535,8 @@ final class AppController: NSObject {
             features: snapshot.features,
             unlocked: unlocked,
             isDemo: demo != nil,
-            season: snapshot.season
+            season: snapshot.season,
+            weather: snapshot.weather
         )
         let decor = demo?.decor ?? state.decor
         if model.decor != decor { model.decor = decor }
@@ -627,6 +632,14 @@ final class AppController: NSObject {
 
     /// The season the scenes are showing right now (real or Demo).
     var currentSeason: Season { lastSnapshot?.season ?? .summer }
+
+    func setDemoWeather(_ weather: Weather?) {
+        guard demo != nil else { return }
+        demo?.weather = weather
+        refresh()
+    }
+
+    var currentWeather: Weather { lastSnapshot?.weather ?? .clear }
 
     func toggleDemoCycle() {
         guard demo != nil else { return }
