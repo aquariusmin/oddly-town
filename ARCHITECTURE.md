@@ -50,6 +50,8 @@
 | 활동 | `System/FrontmostAppMonitor.swift`, `OddlyTownCore/ActivityAccumulator.swift`, `ActivityClassifier.swift` | 전면 앱 이벤트 → 카테고리 → 추정 시간 |
 | 저장 | `OddlyTownCore/JSONFileStore.swift`, `TownState.swift`, `AppSettings.swift` | 원자적 JSON, 손상 파일 백업, 관대한 디코딩, 스키마 v1→v2 |
 | 설정 | `UI/AppModel.swift`, `UI/SettingsView.swift` | SwiftUI 바인딩, 변경 즉시 저장·적용 |
+| 로그인 항목 | `System/LoginItem.swift` | `SMAppService.mainApp` 래퍼. 상태는 시스템 소유라 저장하지 않고, 설정 창을 열 때·앱이 활성화될 때·메뉴를 열 때 다시 읽음 |
+| 동작 줄이기 | `AppController.applyMotionPreference`, `TownScene.setReduceMotion` | `NSWorkspace.accessibilityDisplayShouldReduceMotion`과 변경 알림. 장식 반복 노드(`ambientLoops`)만 개별로 `isPaused`. 부모 컨테이너는 낮밤 페이드를 돌리므로 멈추지 않음. Capture Studio 제외 |
 
 **규칙은 한 곳에 모여 있습니다.**
 - 성장 수치, 활동 → 시설: `GrowthRules.standard`

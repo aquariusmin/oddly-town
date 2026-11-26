@@ -35,6 +35,9 @@
 - [x] 스모크 실행·리소스 측정 스크립트 (`scripts/smoke-run.sh`, `scripts/measure-resources.sh`)
 - [x] 첫 CI 실행으로 Capture Studio 포함 앱 타깃의 Mac 빌드 확인 (경고 0, 테스트 80개, 스모크 통과)
 - [ ] 실기기에서 상태별 CPU·메모리 측정 후 기록 (`scripts/measure-resources.sh`)
+- [x] 로그인 시 자동 실행 (`SMAppService.mainApp`)
+- [x] 접근성: "동작 줄이기" 설정 존중 (장식 반복 움직임 정지)
+- [ ] 위 두 기능 실기기 확인 ([docs/TESTING.md](docs/TESTING.md))
 
 ## v0.3 후보
 
@@ -42,9 +45,9 @@
 - 투명 영역 클릭 통과 (실기기에서 macOS 기본 동작 확인 후, 필요하면 저비용 방식 검토)
 - 모드 전환 시 주민 위치·행동 이어받기
 - 장식 자리 늘리기 또는 시설 위치 선택(제한된 후보 위치 중에서)
-- 앱별 분류 수정 UI, 로그인 시 자동 실행 (`SMAppService.mainApp`)
+- 앱별 분류 수정 UI
 - 계절·날씨(비·눈), 이벤트 추가(새 떼, 우편 배달부, 밤의 반딧불)
-- 접근성: "동작 줄이기" 설정 존중, VoiceOver 상태 설명
+- 접근성: VoiceOver 상태 설명
 - 마을 스냅샷 이미지 내보내기 (릴스/공유용, Demo 표시 유지)
 - 정식 픽셀아트 에셋 교체 (PNG 오버라이드 경로 활용)
 - Level 4 이상

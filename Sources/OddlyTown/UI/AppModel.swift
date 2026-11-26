@@ -32,6 +32,10 @@ final class AppModel: ObservableObject {
     @Published var decor = DecorLayout.standard
     @Published var selection: SelectionInfo?
     @Published var isTownModeOpen = false
+    /// Read from the system, never saved (see `LoginItem`).
+    @Published var loginItem = LoginItem.State.unavailable
+    /// The system's Reduce Motion setting.
+    @Published var reducesMotion = false
 
     let rules: GrowthRules
     let dataDirectory: URL
@@ -45,6 +49,8 @@ final class AppModel: ObservableObject {
     var onPlaceDecor: ((Int, DecorItem?) -> Void)?
     var onSetFeatureHidden: ((TownFeature, Bool) -> Void)?
     var onCloseTownMode: (() -> Void)?
+    var onSetOpenAtLogin: ((Bool) -> Void)?
+    var onOpenLoginItemsSettings: (() -> Void)?
 
     init(settings: AppSettings, status: TownStatus, rules: GrowthRules, dataDirectory: URL, isDeveloper: Bool) {
         self.settings = settings

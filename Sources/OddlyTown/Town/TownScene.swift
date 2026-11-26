@@ -67,6 +67,13 @@ final class TownScene: SKScene {
     private(set) var snapshot: TownSnapshot?
     private(set) var animating = true
 
+    /// Decorative motion that loops forever: drifting clouds, swaying trees, chimney smoke,
+    /// fluttering bunting, twinkling stars, fireflies and the selection arrow's bob.
+    /// "Reduce Motion" freezes these one by one (not their containers, which still run the
+    /// day/night fades). Residents, visitors and fades keep going: they are the town's life.
+    private var ambientLoops: [SKNode] = []
+    private(set) var reducesMotion = false
+
     init(pixelScale: Int, interactive: Bool) {
         self.pixelScale = max(1, pixelScale)
         self.interactive = interactive
@@ -102,6 +109,12 @@ final class TownScene: SKScene {
     func setAnimating(_ on: Bool) {
         animating = on
         world.isPaused = !on
+    }
+
+    /// Follows the system's Reduce Motion setting (Capture Studio never calls this).
+    func setReduceMotion(_ on: Bool) {
+        reducesMotion = on
+        for node in ambientLoops { node.isPaused = on }
     }
 
     func apply(_ next: TownSnapshot) {
@@ -192,6 +205,7 @@ final class TownScene: SKScene {
             star.anchorPoint = .zero
             star.position = CGPoint(x: x, y: y)
             starField.addChild(star)
+            ambientLoops.append(star)
             star.run(.repeatForever(.sequence([
                 .wait(forDuration: 1.3 + Double(index % 4) * 0.7),
                 .fadeAlpha(to: 0.3, duration: 0.8),
@@ -235,6 +249,7 @@ final class TownScene: SKScene {
             ])
             node.run(.repeatForever(wander))
             node.run(.repeatForever(blink))
+            ambientLoops.append(node)
         }
         fireflies.alpha = 0
         world.addChild(fireflies)
@@ -247,6 +262,7 @@ final class TownScene: SKScene {
         for cloud in clouds {
             let node = sprite(TownArt.tex(cloud.name, cloud.rows), left: cloud.x, y: cloud.y, z: -40, parent: sky)
             let start: CGFloat = -20, end: CGFloat = 150
+            ambientLoops.append(node)
             node.run(.sequence([
                 .moveTo(x: end, duration: Double((end - cloud.x) / cloud.speed)),
                 .repeatForever(.sequence([
@@ -315,6 +331,7 @@ final class TownScene: SKScene {
             smoke.zPosition = 90
             smoke.alpha = 0
             workshop.addChild(smoke)
+            ambientLoops.append(smoke)
             smoke.run(.sequence([
                 .wait(forDuration: Double(index) * 1.3),
                 .repeatForever(.sequence([
@@ -344,6 +361,7 @@ final class TownScene: SKScene {
                       TownArt.cached("bunting-1") { TownArt.buntingTexture(width: 134, frame: 1) }]
         let flags = sprite(frames[0], left: 3, y: 30, z: 61, parent: bunting)
         flags.run(.repeatForever(.animate(with: frames, timePerFrame: 0.7)))
+        ambientLoops.append(flags)
     }
 
     private func buildDecorSlots() {
@@ -415,6 +433,7 @@ final class TownScene: SKScene {
         selectionArrow.isHidden = true
         world.addChild(selectionArrow)
         selectionArrow.run(.repeatForever(.sequence([.moveBy(x: 0, y: 1, duration: 0.5), .moveBy(x: 0, y: -1, duration: 0.5)])))
+        ambientLoops.append(selectionArrow)
     }
 
     private func buildOverlays() {
@@ -495,6 +514,7 @@ final class TownScene: SKScene {
         let width = CGFloat(rows.map(\.count).max() ?? 0)
         let tree = sprite(frames[0], left: (centerX - width / 2).rounded(.down), y: y, parent: parent)
         tree.run(.repeatForever(.animate(with: frames, timePerFrame: period)))
+        ambientLoops.append(tree)
     }
 
     private func glow(radius: Int, center: CGPoint, parent: SKNode) -> SKSpriteNode {
@@ -525,7 +545,11 @@ final class TownScene: SKScene {
         if visible {
             visibleFeatures.insert(feature)
             node.isHidden = false
-            if animated {
+            if animated && reducesMotion {
+                node.alpha = 0
+                node.position.y = 0
+                node.run(.fadeIn(withDuration: 0.8), withKey: "appear")
+            } else if animated {
                 node.alpha = 0
                 node.position.y = -3
                 node.run(.group([.fadeIn(withDuration: 0.8), .moveTo(y: 0, duration: 0.8)]), withKey: "appear")

@@ -42,6 +42,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(item(settings.animationsEnabled ? "Pause Animation" : "Resume Animation", #selector(toggleAnimations)))
         menu.addItem(item("Click-through", #selector(toggleClickThrough), on: settings.clickThrough))
         menu.addItem(item("Activity Tracking", #selector(toggleTracking), on: settings.activityTrackingEnabled))
+        let login = LoginItem.state
+        let loginEntry = item(login == .needsApproval ? "Open at Login (needs approval)…" : "Open at Login",
+                              #selector(toggleOpenAtLogin), on: login == .on)
+        loginEntry.isEnabled = login != .unavailable
+        menu.addItem(loginEntry)
         menu.addItem(item("Reset Window Position", #selector(resetPosition)))
         menu.addItem(.separator())
 
@@ -143,6 +148,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func toggleClickThrough() { controller.toggleClickThrough() }
     @objc private func toggleTracking() { controller.setTrackingEnabled(!controller.model.settings.activityTrackingEnabled) }
     @objc private func resetPosition() { controller.resetWindowPosition() }
+    @objc private func toggleOpenAtLogin() {
+        switch LoginItem.state {
+        case .needsApproval: LoginItem.openSystemSettings()
+        case .on: controller.setOpenAtLogin(false)
+        case .off: controller.setOpenAtLogin(true)
+        case .unavailable: break
+        }
+    }
     @objc private func quit() { NSApp.terminate(nil) }
 
     @objc private func openCapture() { controller.openCaptureStudio() }
