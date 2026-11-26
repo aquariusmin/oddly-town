@@ -154,7 +154,10 @@ scripts/test-core-docker.sh      # Linux/Docker (공식 swift:6.0 이미지, 코
 
 scripts/build-app.sh && scripts/smoke-run.sh -l dev -- --dev   # 실행 → 60초 샘플링 → 종료 → 저장 확인
 scripts/measure-resources.sh -d 1800 -o ambient.csv            # 실행 중인 앱의 CPU·메모리 기록
+scripts/install-ci-build.sh                                    # Mac: CI가 빌드한 최신 main 앱을 /Applications에 설치
 ```
+
+실기기에서 새 기능을 확인하려면 [docs/TESTING.md의 "빠른 확인"](docs/TESTING.md#실기기-빠른-확인--unreleased-약-15분) 표를 따르세요.
 
 **CI** (GitHub Actions)는 푸시와 PR마다 다음을 실행합니다.
 - macOS: 앱 타깃까지 빌드, `swift test`, `.app` 번들링, 스모크 실행(일반·개발자 모드 각 60초).
