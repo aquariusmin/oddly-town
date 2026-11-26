@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Launches the bundled app, checks that it stays up, samples CPU/memory, quits it
-# with SIGTERM and checks that it saved town.json on the way out. Used by CI and
+# with SIGTERM and checks that it saved town.json on the way out (and journal.json,
+# which notes the season on the first look). Used by CI and
 # handy locally after scripts/build-app.sh.
 #
 #   scripts/smoke-run.sh                       # normal mode, 60 s
@@ -39,6 +40,7 @@ folder="OddlyTown"
 for arg in "$@"; do [[ "$arg" == "--dev" ]] && folder="OddlyTown-Dev"; done
 [[ "${ODDLY_DEV:-}" == "1" ]] && folder="OddlyTown-Dev"
 TOWN_JSON="$HOME/Library/Application Support/$folder/town.json"
+JOURNAL_JSON="$HOME/Library/Application Support/$folder/journal.json"
 
 mkdir -p "$OUTDIR"
 LOG="$OUTDIR/$LABEL.log"
@@ -79,5 +81,7 @@ wait "$PID" 2>/dev/null && code=0 || code=$?
 [[ -f "$TOWN_JSON" ]] || fail "no town.json at $TOWN_JSON after quitting"
 [[ "$TOWN_JSON" -nt "$marker" ]] || fail "town.json was not saved on quit"
 grep -q '"schemaVersion"' "$TOWN_JSON" || fail "town.json has no schemaVersion"
+[[ -f "$JOURNAL_JSON" ]] || fail "no journal.json at $JOURNAL_JSON"
+grep -q '"lastSeason"' "$JOURNAL_JSON" || fail "journal.json did not note the season"
 
-echo "OK ($LABEL): ran ${DURATION}s, quit cleanly, saved $TOWN_JSON" | tee -a "$OUTDIR/$LABEL.txt"
+echo "OK ($LABEL): ran ${DURATION}s, quit cleanly, saved town.json and journal.json in $(dirname "$TOWN_JSON")" | tee -a "$OUTDIR/$LABEL.txt"

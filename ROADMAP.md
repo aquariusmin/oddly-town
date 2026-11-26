@@ -45,7 +45,8 @@
 - [ ] 4a 실기기 확인
 - [x] 4b 날씨(비·눈), 입자, 주민 행동 보정
 - [ ] 4b 실기기 확인
-- [ ] 4c 마을 일지 (`journal.json`, Town Mode 패널, 말풍선)
+- [x] 4c 마을 일지 (`journal.json`, Town Mode 패널, Town Status, 말풍선)
+- [ ] 4c 실기기 확인
 - [ ] 4d 봄·여름 아트 다듬기
 
 ## v0.3 후보

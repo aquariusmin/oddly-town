@@ -27,6 +27,8 @@ final class TownScene: SKScene {
 
     /// Town Mode: something was clicked (nil = empty ground).
     var onSelect: ((TownSelection?) -> Void)?
+    /// Two residents decided to chat (for the town journal). Gatherings don't count.
+    var onChat: ((Int, Int) -> Void)?
 
     let world = SKNode()
     let sky = SKNode()
@@ -64,6 +66,7 @@ final class TownScene: SKScene {
     let bubbleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let tagLabel = SKLabelNode(fontNamed: "Menlo-Bold")
 
+    private var bubbleFontSize: CGFloat = 9
     private(set) var snapshot: TownSnapshot?
     private(set) var animating = true
 
@@ -158,7 +161,19 @@ final class TownScene: SKScene {
     }
 
     func showStatus(_ text: String) {
+        // Long lines (journal) shrink a little, then get cut with "…", so the bubble fits the view.
+        bubbleLabel.fontSize = bubbleFontSize
         bubbleLabel.text = text
+        let maxWidth = size.width - 6
+        func natural() -> CGFloat { bubbleLabel.frame.width + bubbleLabel.fontSize * 1.8 }
+        if natural() > maxWidth {
+            bubbleLabel.fontSize = max(7, bubbleLabel.fontSize * maxWidth / natural())
+        }
+        var shortened = text
+        while natural() > maxWidth && shortened.count > 8 {
+            shortened = String(shortened.dropLast(2))
+            bubbleLabel.text = shortened + "…"
+        }
         let width = bubbleLabel.frame.width + bubbleLabel.fontSize * 1.8
         let height = bubbleLabel.fontSize * 1.9
         bubble.path = CGPath(
@@ -491,7 +506,8 @@ final class TownScene: SKScene {
 
     private func layoutOverlays() {
         let s = CGFloat(pixelScale)
-        bubbleLabel.fontSize = min(max(4.5 * s, 9), 15)
+        bubbleFontSize = min(max(4.5 * s, 9), 15)
+        bubbleLabel.fontSize = bubbleFontSize
         bubble.position = CGPoint(x: size.width / 2, y: size.height - bubbleLabel.fontSize * 1.4)
         tagLabel.fontSize = min(max(3.5 * s, 7), 12)
         tagLabel.position = CGPoint(x: 2 * s, y: size.height - 2 * s)

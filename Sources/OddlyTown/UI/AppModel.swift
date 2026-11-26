@@ -38,6 +38,8 @@ final class AppModel: ObservableObject {
     @Published var loginItem = LoginItem.State.unavailable
     /// The system's Reduce Motion setting.
     @Published var reducesMotion = false
+    /// Recent journal days, newest first (empty in Demo Mode).
+    @Published var journal: [JournalDay] = []
 
     let rules: GrowthRules
     let dataDirectory: URL

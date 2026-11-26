@@ -52,6 +52,26 @@ struct TownModePanel: View {
 
     private var selectionColumn: some View {
         VStack(alignment: .leading, spacing: 6) {
+            if model.selection == nil, let today = todaysJournal {
+                Text("Today in town").font(.headline)
+                // The newest three lines; the rest are in Town Status.
+                JournalView(days: [today], linesPerDay: 3, font: .callout, showsDayTitles: false)
+                Text("Click something to learn about it.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                selectionDetails
+            }
+        }
+    }
+
+    /// Today's journal day, if anything was written.
+    private var todaysJournal: JournalDay? {
+        guard let newest = model.journal.first, JournalView.title(for: newest.day) == "Today" else { return nil }
+        return newest
+    }
+
+    @ViewBuilder
+    private var selectionDetails: some View {
+        VStack(alignment: .leading, spacing: 6) {
             Text(model.selection?.title ?? "Look around").font(.headline)
             Text(model.selection?.detail
                  ?? "Click a resident, a building or one of the four decoration spots along the front of town.")
