@@ -68,6 +68,10 @@
   - 날씨에 따른 주민 행동: `ResidentBehaviorRules.wetFactors`, `wetHomeWeight`, `winterDuskHomeFactor`
   - 날씨에 따른 이벤트: `TownEventRule.weathers`
   - 화면: `TownScene.applyWeather`(미리 만든 입자 28개, `ambientLoops`), `applyPhase`의 흐린 색조, 주민 우산(`ResidentSprite.umbrella`)
+- 마을 일지: `OddlyTownCore/Journal.swift`
+  - 문장과 기록 규칙: `JournalMoment.text`, `Journal.record`(하루 1번, 평범한 일 6줄 상한, 60일 보관)
+  - 변화 감지: `JournalWatcher`(레벨·건물·날씨), `Journal.noteSeason`(계절, 재실행을 넘어서도 감지)
+  - 앱 쪽 연결: `AppController.observeForJournal`(매 refresh, Demo 제외), 이벤트 시작, `TownScene.onChat`(주민이 대화를 고를 때)
 
 ## 데이터 흐름
 
@@ -94,6 +98,7 @@
 | 파일 | v1 (0.1.0) | v2 (0.2.0) | 마이그레이션 |
 |---|---|---|---|
 | `town.json` | 성장, 활동, 일일 상한 | + `decor { slots[4], hiddenFeatures }` | `decor`가 없거나 깨졌으면 `DecorLayout.standard`. 다음 저장 때 `schemaVersion: 2`로 씀 |
+| `journal.json` | — | — (0.3에서 새로 생김, 자체 `schemaVersion: 1`) | 없거나 깨졌으면 빈 일지로 시작(깨진 파일은 `*.corrupt-<time>.json`으로 옮김). 마을 진행과 분리 |
 | `settings.json` | 기본 너비 420 | `schemaVersion`, 기본 너비 280, 너비는 140의 배수 | v1이면서 420이었다면 280으로. 그 외 너비는 가장 가까운 배수로 |
 
 필드는 모두 `decodeIfPresent` + 기본값으로 읽습니다. 모르는 장식이나 카테고리는 무시하고, 음수와 NaN은 0으로 바꿉니다. JSON 자체가 깨졌으면 `*.corrupt-<time>.json`으로 옮긴 뒤 새로 시작합니다.

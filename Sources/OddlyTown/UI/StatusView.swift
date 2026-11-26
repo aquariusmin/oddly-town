@@ -50,6 +50,18 @@ struct StatusView: View {
 
             Divider()
 
+            Text("Journal").font(.headline)
+            if model.journal.isEmpty {
+                Text(status.isDemo
+                     ? "The journal is hidden during Demo Mode."
+                     : "Nothing written yet. Visitors, chats, weather and new buildings show up here.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                JournalView(days: Array(model.journal.prefix(3)))
+            }
+
+            Divider()
+
             Text("Activity").font(.headline)
             if model.settings.activityTrackingEnabled {
                 Text("Estimated time each kind of app was in front. Not a measure of focus or productivity.")

@@ -203,7 +203,11 @@ extension TownScene {
     }
 
     func residentFinished(_ index: Int) {
-        start(life.nextPlans(finished: index, context: lifeContext))
+        let plans = life.nextPlans(finished: index, context: lifeContext)
+        if let plan = plans[index], plan.activity == .socializing, let partner = plan.partner {
+            onChat?(index, partner)
+        }
+        start(plans)
     }
 
     func residentActivity(_ index: Int) -> ResidentActivity? {

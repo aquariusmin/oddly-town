@@ -24,7 +24,12 @@ final class AppController: NSObject {
 
     private let townStore: JSONFileStore<TownState>
     private let settingsStore: JSONFileStore<AppSettings>
+    private let journalStore: JSONFileStore<Journal>
     private var state: TownState
+    private var journal: Journal
+    private var journalWatcher = JournalWatcher()
+    /// Second click on the Ambient town within a few seconds shows the latest journal line.
+    private var lastStatusClick: Date?
     private var classifier: ActivityClassifier
     private var accumulator = ActivityAccumulator()
     private let monitor = FrontmostAppMonitor()
@@ -66,11 +71,20 @@ final class AppController: NSObject {
                   backup?.path ?? "(could not back up)")
         }
         let settings = settingsStore.load().value ?? AppSettings()
+        let journalStore = JSONFileStore<Journal>(url: environment.dataDirectory.appendingPathComponent("journal.json"))
+        let journalLoad = journalStore.load()
+        if case .recovered(let backup) = journalLoad {
+            NSLog("Oddly Town: journal.json was unreadable and has been moved to %@. Starting a fresh journal.",
+                  backup?.path ?? "(could not back up)")
+        }
+        let journal = journalLoad.value ?? Journal()
 
         self.environment = environment
         self.engine = engine
         self.townStore = townStore
         self.settingsStore = settingsStore
+        self.journalStore = journalStore
+        self.journal = journal
         self.state = loaded
         events = EventScheduler(start: Date())
         classifier = ActivityClassifier(overrides: settings.categoryOverrides)
@@ -100,6 +114,7 @@ final class AppController: NSObject {
         model.onOpenLoginItemsSettings = { LoginItem.openSystemSettings() }
 
         overlay.onClick = { [weak self] in self?.townClicked() }
+        overlay.scene.onChat = { [weak self] a, b in self?.writeJournal(.chat(a, b)) }
         overlay.onDoubleClick = { [weak self] in self?.openTownMode() }
         overlay.onMoved = { [weak self] origin in self?.townDragged(to: origin) }
         overlay.apply(model.settings)
@@ -237,6 +252,7 @@ final class AppController: NSObject {
             switch change {
             case .started(let kind, let duration):
                 scenes.forEach { $0.startEvent(kind, duration: duration) }
+                writeJournal(.event(kind, festive: lastSnapshot?.features.contains(.festivalBunting) == true))
                 overlay.requestRedraw(for: 1)
             case .ended(let kind):
                 scenes.forEach { $0.endEvent(kind) }
@@ -342,6 +358,7 @@ final class AppController: NSObject {
         let controller = TownModeWindowController(model: model)
         controller.onClose = { [weak self] in self?.townModeDidClose() }
         controller.scene.onSelect = { [weak self] selection in self?.townSelectionChanged(selection) }
+        controller.scene.onChat = { [weak self] a, b in self?.writeJournal(.chat(a, b)) }
         townMode = controller
         if let lastSnapshot { controller.scene.apply(lastSnapshot) }
         controller.scene.setTag(sceneTag)
@@ -435,8 +452,51 @@ final class AppController: NSObject {
     }
 
     private func townClicked() {
-        overlay.scene.showStatus(statusLine)
+        let now = Date()
+        if let last = lastStatusClick, now.timeIntervalSince(last) < 4, let line = bubbleJournalLine(now: now) {
+            overlay.scene.showStatus(line)
+            lastStatusClick = nil
+        } else {
+            overlay.scene.showStatus(statusLine)
+            lastStatusClick = now
+        }
         overlay.requestRedraw(for: 4.5)
+    }
+
+    private func bubbleJournalLine(now: Date) -> String? {
+        guard demo == nil, let latest = journal.latest else { return nil }
+        return Calendar.current.isDate(latest.time, inSameDayAs: now) ? "Today: \(latest.text)" : "Lately: \(latest.text)"
+    }
+
+    // MARK: Journal
+
+    private var residentNames: [String] { TownArt.residentLooks.map(\.name) }
+
+    /// Writes a line (never in Demo Mode) and saves the journal if anything was added.
+    private func writeJournal(_ moment: JournalMoment) {
+        guard demo == nil else { return }
+        guard journal.record(moment, at: Date(), names: residentNames) != nil else { return }
+        saveJournal()
+        publishJournal()
+    }
+
+    /// Season changes, level-ups, arrivals and showers, seen on each real refresh.
+    private func observeForJournal(_ snapshot: TownSnapshot) {
+        let seasonBefore = journal.lastSeason
+        let newSeason = journal.noteSeason(snapshot.season)
+        if let newSeason { writeJournal(newSeason) } else if seasonBefore != journal.lastSeason { saveJournal() }
+        let moments = journalWatcher.changes(level: engine.level(of: state), unlocked: engine.unlockedFeatures(of: state),
+                                             weather: snapshot.weather, snowedThisSeason: journal.snowedThisSeason)
+        for moment in moments { writeJournal(moment) }
+    }
+
+    private func saveJournal() {
+        do { try journalStore.save(journal) } catch { NSLog("Oddly Town: could not save journal: %@", "\(error)") }
+    }
+
+    private func publishJournal() {
+        let recent = demo == nil ? journal.recent(7) : []
+        if model.journal != recent { model.journal = recent }
     }
 
     func showStatusWindow() {
@@ -461,9 +521,14 @@ final class AppController: NSObject {
 
     private func confirmResetActivity() {
         guard confirm("Erase activity history?",
-                      "All saved category times are deleted. Buildings that came from activity will disappear; time-based growth is kept.",
+                      "All saved category times are deleted. Buildings that came from activity will disappear, along with their journal lines; time-based growth is kept.",
                       action: "Erase") else { return }
         state.activitySeconds = [:]
+        // Buildings that came from activity leave the journal too, so it can't hint at app use.
+        let activityKeys = Set(engine.rules.activityUnlocks.map { JournalMoment.arrived($0.feature).key })
+        journal.removeEntries { activityKeys.contains($0.key) }
+        saveJournal()
+        publishJournal()
         accumulator = ActivityAccumulator()
         if model.settings.activityTrackingEnabled { monitor.reportCurrent() }
         saveState()
@@ -472,9 +537,12 @@ final class AppController: NSObject {
 
     private func confirmResetTown() {
         guard confirm("Start a new town?",
-                      "Level, growth and activity history are reset to the beginning. Your decoration choices are kept.",
+                      "Level, growth, activity history and the town journal are reset to the beginning. Your decoration choices are kept.",
                       action: "Reset Town") else { return }
         state = TownState(decor: state.decor)
+        journal = Journal()
+        journalWatcher = JournalWatcher()
+        saveJournal()
         accumulator = ActivityAccumulator()
         saveState()
         refresh()
@@ -512,6 +580,8 @@ final class AppController: NSObject {
     private func refresh() {
         let now = Date()
         let snapshot = currentSnapshot(now: now)
+        if demo == nil { observeForJournal(snapshot) }
+        publishJournal()
         if snapshot != lastSnapshot {
             scenes.forEach { $0.apply(snapshot) }
             overlay.requestRedraw(for: 4)

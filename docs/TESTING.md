@@ -105,6 +105,17 @@
 - [ ] Capture Studio: W로 날씨 순환, Ambient 투명 영역(하늘)에도 빗줄기가 보임
 - [ ] 성능: 비 오는 동안 CPU를 `scripts/measure-resources.sh`로 측정해 맑은 날과 비교
 
+### 마을 일지 (Unreleased, 4c)
+일반 실행(Demo 끔). 빨리 보려면 `--dev`(5초 틱, 60배속)에서 Developer → Grow +1 hour / Add 45 min ….
+- [ ] Grow +1 hour 두 번 → 일지에 "The town grew to Level 2."와 새 건물·주민 줄이 굵게 표시됨
+- [ ] Town Mode에서 아무것도 선택하지 않으면 "Today in town"과 최신 3줄. 무언가를 클릭하면 원래 설명으로 바뀜
+- [ ] Ambient 마을 클릭 → 레벨 말풍선, 4초 안에 다시 클릭 → "Today: …" (긴 문장이 280pt 창 안에 들어감)
+- [ ] 몇 분 두면 주민 대화 줄이 생김. 같은 두 사람은 하루 한 번만
+- [ ] Demo Mode를 켜면 일지가 숨고 기록되지 않음. 끄면 다시 보임
+- [ ] 재실행 후에도 일지가 남아 있음. `journal.json`에 앱 이름이 없음
+- [ ] Settings → Reset Activity History… → 공방 등 활동 건물 줄만 사라짐. Reset Town… → 일지가 비워짐
+- [ ] `journal.json`을 깨뜨리고 실행 → 마을 진행은 그대로, 일지만 새로 시작, `journal.corrupt-*.json` 생성
+
 ### 기타 확인
 - [ ] 실행 시 Dock 아이콘 없음. Ambient 마을 클릭 시 다른 앱의 키보드 포커스 유지
 - [ ] Settings → Size: 2×~6× 단계로만 바뀌고 픽셀이 흐려지지 않음
