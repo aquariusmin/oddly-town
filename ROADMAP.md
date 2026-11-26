@@ -33,7 +33,7 @@
 
 - [x] macOS CI: 앱 타깃 빌드, 테스트, 번들링, 스모크 실행, 경고 주석 (`.github/workflows/ci.yml`)
 - [x] 스모크 실행·리소스 측정 스크립트 (`scripts/smoke-run.sh`, `scripts/measure-resources.sh`)
-- [ ] 첫 CI 실행으로 Capture Studio 포함 앱 타깃의 Mac 빌드 확인
+- [x] 첫 CI 실행으로 Capture Studio 포함 앱 타깃의 Mac 빌드 확인 (경고 0, 테스트 80개, 스모크 통과)
 - [ ] 실기기에서 상태별 CPU·메모리 측정 후 기록 (`scripts/measure-resources.sh`)
 
 ## v0.3 후보

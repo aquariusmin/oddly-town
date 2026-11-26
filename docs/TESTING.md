@@ -13,7 +13,7 @@
 |---|---|---|
 | v0.1.0 | 36개 통과 | 36개 통과 |
 | v0.2.0 | 70개 통과 | 70개 통과 |
-| Unreleased (Capture Studio) | CI에서 확인 예정 | **80개 통과** |
+| Unreleased (Capture Studio) | **80개 통과** (CI, Xcode 16.4) | **80개 통과** |
 
 ### 검증 항목
 

@@ -26,9 +26,14 @@
 - 주민에게 1px 외곽선과 눈을 추가했습니다. Pip 셔츠는 세이지 → 청록, Juno 셔츠는 모래 → 자두색으로 바꿨습니다(잔디·길과 구분되지 않던 문제).
 - 땅: 길 가장자리 자국과 잔디 하이라이트.
 
+### Verified (2026-11-26, CI run 45816224203, macOS 15 · Xcode 16.4 · Swift 6.1.2)
+- Capture Studio를 포함한 앱 타깃이 Mac에서 수정 없이 빌드됩니다. Swift 컴파일러 경고 0개.
+- `swift test` 80개 통과 (macOS, Linux `swift:6.0` 모두).
+- 스모크 실행(일반·`--dev` 각 60초): 실행 유지, SIGTERM으로 정상 종료, `town.json` 저장 확인.
+  - GitHub VM 수치(참고용): 평균 CPU 약 2.0%, physical footprint 13 MB, 60초 동안 증가 +0.2 MB 이하.
+
 ### Not verified
-- 앱 타깃(AppKit/SpriteKit)은 Linux에서 작성해 **아직 Mac에서 빌드·실행하지 않았습니다.** 코어 테스트 80개는 Docker에서 통과했습니다. 첫 CI 실행이 Mac 빌드의 첫 확인이 됩니다.
-- CI 스모크 실행은 GitHub의 macOS VM에서 돌기 때문에, 실행·종료·저장이 되는지와 회귀 여부만 알려줍니다. 실기기 성능 수치를 대신하지는 않습니다.
+- Capture Studio 화면과 단축키 동작, 실기기 성능 수치(위 수치는 GPU가 없는 VM 기준).
 
 ## [0.2.0-alpha] — 2026-10-21 — Ambient Living World
 
