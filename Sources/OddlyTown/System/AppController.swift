@@ -94,6 +94,8 @@ final class AppController: NSObject {
         model.onPlaceDecor = { [weak self] slot, item in self?.placeDecor(item, inSlot: slot) }
         model.onSetFeatureHidden = { [weak self] feature, hidden in self?.setFeature(feature, hidden: hidden) }
         model.onCloseTownMode = { [weak self] in self?.closeTownMode() }
+        model.onSetOpenAtLogin = { [weak self] on in self?.setOpenAtLogin(on) }
+        model.onOpenLoginItemsSettings = { LoginItem.openSystemSettings() }
 
         overlay.onClick = { [weak self] in self?.townClicked() }
         overlay.onDoubleClick = { [weak self] in self?.openTownMode() }
@@ -110,6 +112,13 @@ final class AppController: NSObject {
         workspace.addObserver(self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification, object: nil)
         workspace.addObserver(self, selector: #selector(willSleep), name: NSWorkspace.sessionDidResignActiveNotification, object: nil)
         workspace.addObserver(self, selector: #selector(didWake), name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
+        workspace.addObserver(self, selector: #selector(applyMotionPreference),
+                              name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
+        // Login Items can be changed in System Settings while we run; re-read when the user comes back.
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshLoginItem),
+                                               name: NSApplication.didBecomeActiveNotification, object: nil)
+        applyMotionPreference()
+        refreshLoginItem()
 
         lastTick = Date()
         let timer = Timer(timeInterval: environment.tickInterval, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
@@ -164,6 +173,50 @@ final class AppController: NSObject {
     @objc private func didWake() {
         lastTick = Date()
         accumulator.resume(at: Date())
+    }
+
+    // MARK: Accessibility
+
+    /// System Settings → Accessibility → Display → Reduce Motion freezes the decorative loops
+    /// (clouds, trees, smoke, bunting, stars, fireflies) in Ambient and Town Mode. Residents
+    /// keep living. Capture Studio ignores it: it exists to record motion.
+    @objc private func applyMotionPreference() {
+        let on = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        model.reducesMotion = on
+        overlay.scene.setReduceMotion(on)
+        townMode?.scene.setReduceMotion(on)
+        overlay.requestRedraw()
+    }
+
+    // MARK: Open at Login
+
+    @objc private func refreshLoginItem() {
+        let state = LoginItem.state
+        if model.loginItem != state { model.loginItem = state }
+    }
+
+    func setOpenAtLogin(_ on: Bool) {
+        do {
+            try LoginItem.set(on)
+        } catch {
+            NSLog("Oddly Town: could not change Open at Login: %@", "\(error)")
+            let alert = NSAlert(error: error)
+            alert.messageText = on ? "Couldn't add Oddly Town to Login Items" : "Couldn't remove Oddly Town from Login Items"
+            NSApp.activate()
+            alert.runModal()
+        }
+        refreshLoginItem()
+        if on && model.loginItem == .needsApproval { confirmLoginItemApproval() }
+    }
+
+    private func confirmLoginItemApproval() {
+        let alert = NSAlert()
+        alert.messageText = "Allow Oddly Town in Login Items"
+        alert.informativeText = "macOS needs your OK before Oddly Town can open at login. Turn it on under System Settings → General → Login Items."
+        alert.addButton(withTitle: "Open Login Items")
+        alert.addButton(withTitle: "Later")
+        NSApp.activate()
+        if alert.runModal() == .alertFirstButtonReturn { LoginItem.openSystemSettings() }
     }
 
     // MARK: Events
@@ -289,6 +342,7 @@ final class AppController: NSObject {
         townMode = controller
         if let lastSnapshot { controller.scene.apply(lastSnapshot) }
         controller.scene.setTag(sceneTag)
+        controller.scene.setReduceMotion(model.reducesMotion)
         overlay.setSuspended(true)
         model.isTownModeOpen = true
         controller.show()
@@ -387,6 +441,7 @@ final class AppController: NSObject {
     }
 
     func showSettingsWindow() {
+        refreshLoginItem()
         windows.show(id: "settings", title: "Oddly Town Settings") { SettingsView(model: model) }
     }
 

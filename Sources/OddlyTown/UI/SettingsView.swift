@@ -7,6 +7,16 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("Startup") {
+                Toggle("Open at login", isOn: openAtLoginBinding)
+                    .disabled(model.loginItem == .unavailable)
+                Text(loginItemNote)
+                    .font(.caption).foregroundStyle(.secondary)
+                if model.loginItem == .needsApproval {
+                    Button("Open Login Items Settings…") { model.onOpenLoginItemsSettings?() }
+                }
+            }
+
             Section("Town window") {
                 LabeledContent("Size") {
                     HStack {
@@ -27,6 +37,10 @@ struct SettingsView: View {
                 Toggle("Also show over full-screen apps", isOn: $model.settings.showOverFullScreenApps)
                 Toggle("Click-through (clicks pass to apps underneath)", isOn: $model.settings.clickThrough)
                 Toggle("Animations", isOn: $model.settings.animationsEnabled)
+                if model.reducesMotion {
+                    Text("Reduce Motion is on in System Settings, so clouds, trees, smoke and fireflies hold still. Residents still go about their day.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Text("Double-click the town, or use the menu bar, to open Town Mode for a closer look and decorating.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -59,11 +73,27 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 640)
+        .frame(width: 460, height: 720)
     }
 
     private var cornerChoices: [ScreenCorner] {
         ScreenCorner.allCases.filter { $0 != .custom || model.settings.corner == .custom }
+    }
+
+    private var openAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { model.loginItem == .on || model.loginItem == .needsApproval },
+            set: { model.onSetOpenAtLogin?($0) }
+        )
+    }
+
+    private var loginItemNote: String {
+        switch model.loginItem {
+        case .on: return "The town starts with your Mac, so it keeps growing without you having to open it."
+        case .off: return "Start Oddly Town automatically when you log in, so the town keeps growing without you having to open it."
+        case .needsApproval: return "Waiting for your OK in System Settings → General → Login Items."
+        case .unavailable: return "Available when running Oddly Town.app (not swift run)."
+        }
     }
 
     /// Turning tracking on goes through the controller so it can ask for consent first.
