@@ -28,7 +28,9 @@ struct TownModePanel: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text("Level \(progress.level)").font(.title3.bold())
-                Text(model.status.season.displayName).foregroundStyle(.secondary)
+                Text(model.status.weather.isWet ? "\(model.status.season.displayName) · \(model.status.weather.displayName)"
+                                                 : model.status.season.displayName)
+                    .foregroundStyle(.secondary)
                 if model.status.isDemo {
                     Text("DEMO").font(.caption2.bold())
                         .padding(.horizontal, 5).padding(.vertical, 1)

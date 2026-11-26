@@ -83,6 +83,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         for (index, season) in Season.allCases.enumerated() {
             items.append(item("Season: \(season.displayName)", #selector(demoSeason(_:)), on: demo?.season == season, tag: index))
         }
+        items.append(item("Weather: Forecast", #selector(demoWeather(_:)), on: demo != nil && demo?.weather == nil, tag: -1))
+        for (index, weather) in Weather.allCases.enumerated() {
+            items.append(item("Weather: \(weather.displayName)", #selector(demoWeather(_:)), on: demo?.weather == weather, tag: index))
+        }
         items.append(.separator())
         let activityFeatures: [(TownFeature, String)] = [
             (.workshop, "Development → Workshop"),
@@ -176,6 +180,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func demoSeason(_ sender: NSMenuItem) {
         let seasons = Season.allCases
         controller.setDemoSeason(seasons.indices.contains(sender.tag) ? seasons[sender.tag] : nil)
+    }
+
+    @objc private func demoWeather(_ sender: NSMenuItem) {
+        let all = Weather.allCases
+        controller.setDemoWeather(all.indices.contains(sender.tag) ? all[sender.tag] : nil)
     }
 
     @objc private func demoFeature(_ sender: NSMenuItem) {

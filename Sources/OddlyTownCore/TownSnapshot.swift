@@ -31,30 +31,36 @@ public struct TownSnapshot: Equatable, Sendable {
     public var decor: [Int: DecorItem]
     /// From the real calendar (or Demo). Never saved: it's worked out from the date.
     public var season: Season
+    /// Worked out from the date, season and the town's seed (`WeatherForecast`). Never saved.
+    public var weather: Weather
 
     public init(level: Int, features: Set<TownFeature>, phase: DayPhase, lateNight: Bool = false,
-                decor: [Int: DecorItem] = [:], season: Season = .summer) {
+                decor: [Int: DecorItem] = [:], season: Season = .summer, weather: Weather = .clear) {
         self.level = level
         self.features = features
         self.phase = phase
         self.lateNight = lateNight
         self.decor = decor
         self.season = season
+        self.weather = weather
     }
 
     /// The one place real state turns into what's drawn.
     public static func make(state: TownState, engine: GrowthEngine, now: Date, calendar: Calendar = .current,
                             seasons: SeasonSetting = .automatic) -> TownSnapshot {
         let level = engine.level(of: state)
+        let season = seasons.season(at: now, calendar: calendar)
         return make(level: level, features: engine.unlockedFeatures(of: state), decor: state.decor,
                     phase: DayPhase.at(now, calendar: calendar), lateNight: isLateNight(now, calendar: calendar),
-                    season: seasons.season(at: now, calendar: calendar))
+                    season: season,
+                    weather: WeatherForecast.weather(at: now, season: season, seed: state.weatherSeed, calendar: calendar))
     }
 
     public static func make(level: Int, features: Set<TownFeature>, decor: DecorLayout,
-                            phase: DayPhase, lateNight: Bool, season: Season = .summer) -> TownSnapshot {
+                            phase: DayPhase, lateNight: Bool, season: Season = .summer,
+                            weather: Weather = .clear) -> TownSnapshot {
         TownSnapshot(level: level, features: features.subtracting(decor.hiddenFeatures), phase: phase,
-                     lateNight: lateNight, decor: decor.visibleItems(level: level), season: season)
+                     lateNight: lateNight, decor: decor.visibleItems(level: level), season: season, weather: weather)
     }
 
     public var residentCount: Int {

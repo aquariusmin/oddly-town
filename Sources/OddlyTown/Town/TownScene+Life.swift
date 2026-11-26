@@ -15,6 +15,8 @@ final class ResidentSprite {
     /// Bumped on every new plan so a cancelled sequence can't report back.
     private var generation = 0
     private let dots: SKSpriteNode
+    /// Shown in the rain (a child, so it walks, flips and hides with the resident).
+    let umbrella: SKSpriteNode
     private static let speed: CGFloat = 5 // pixels per second
 
     init(index: Int, frames: ResidentFrames, name: String) {
@@ -31,7 +33,15 @@ final class ResidentSprite {
         dots.alpha = 0
         dots.name = "dots"
         node.addChild(dots)
+        umbrella = SKSpriteNode(texture: TownArt.umbrella)
+        umbrella.anchorPoint = CGPoint(x: 0.5, y: 0)
+        umbrella.position = CGPoint(x: 0, y: 10)
+        umbrella.zPosition = 0.5 // under the chat dots
+        umbrella.isHidden = true
+        node.addChild(umbrella)
     }
+
+    func setUmbrella(_ on: Bool) { umbrella.isHidden = !on }
 
     var isIndoors: Bool { node.alpha < 0.5 }
 

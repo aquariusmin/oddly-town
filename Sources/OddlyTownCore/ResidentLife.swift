@@ -83,16 +83,22 @@ public struct LifeContext: Equatable, Sendable {
     public var lateNight: Bool
     public var features: Set<TownFeature>
     public var seatSlots: [Int]
+    public var season: Season
+    public var weather: Weather
 
-    public init(phase: DayPhase, lateNight: Bool, features: Set<TownFeature>, seatSlots: [Int]) {
+    public init(phase: DayPhase, lateNight: Bool, features: Set<TownFeature>, seatSlots: [Int],
+                season: Season = .summer, weather: Weather = .clear) {
         self.phase = phase
         self.lateNight = lateNight
         self.features = features
         self.seatSlots = seatSlots
+        self.season = season
+        self.weather = weather
     }
 
     public init(snapshot: TownSnapshot) {
-        self.init(phase: snapshot.phase, lateNight: snapshot.lateNight, features: snapshot.features, seatSlots: snapshot.seatSlots)
+        self.init(phase: snapshot.phase, lateNight: snapshot.lateNight, features: snapshot.features,
+                  seatSlots: snapshot.seatSlots, season: snapshot.season, weather: snapshot.weather)
     }
 }
 
@@ -111,6 +117,19 @@ public enum ResidentBehaviorRules {
         .readingNook: FeatureActivity(activity: .reading, spot: .readingNook, weight: 3),
         .festivalBunting: FeatureActivity(activity: .celebrating, spot: .plaza, weight: 1.5),
     ]
+
+    /// Rain or snow: outdoor activities are scaled down and staying in becomes likely.
+    /// Rain keeps people in more than snow does.
+    public static let wetFactors: [Weather: [ResidentActivity: Double]] = [
+        .rain: [.walking: 0.3, .idle: 0.5, .sitting: 0.3, .admiringFlowers: 0.2, .celebrating: 0.3,
+                .socializing: 0.6, .reading: 0.6],
+        .snow: [.walking: 0.6, .idle: 0.8, .sitting: 0.3, .admiringFlowers: 0.3, .celebrating: 0.7,
+                .socializing: 0.8, .reading: 0.6],
+    ]
+    /// Weight added to `.returningHome` during a shower, outside the evening.
+    public static let wetHomeWeight: [Weather: Double] = [.rain: 4, .snow: 2]
+    /// Winter evenings: going home is this much more likely at dusk.
+    public static let winterDuskHomeFactor = 2.0
 
     /// Candidate activities with weights. `.returningHome` dominates in the evening and is
     /// the only choice late at night.
@@ -141,6 +160,15 @@ public enum ResidentBehaviorRules {
                 if entry.activity == .celebrating && context.phase == .dawn { continue }
                 w[entry.activity, default: 0] += entry.weight
             }
+        }
+        if let factors = wetFactors[context.weather] {
+            for (activity, factor) in factors where w[activity] != nil { w[activity]! *= factor }
+            if context.phase == .dawn || context.phase == .day {
+                w[.returningHome, default: 0] += wetHomeWeight[context.weather] ?? 0
+            }
+        }
+        if context.season == .winter && context.phase == .dusk {
+            w[.returningHome, default: 0] *= winterDuskHomeFactor
         }
         return w
     }

@@ -79,6 +79,13 @@ final class TownScene: SKScene {
     private var seasonalSprites: [(Season) -> Void] = []
     private(set) var season: Season = .summer
 
+    /// Rain or snow: a few prebuilt particles that loop down the view. Reduce Motion hides
+    /// them (the grey tint and umbrellas still say it's raining).
+    private let weatherLayer = SKNode()
+    private var weatherParticles: [SKSpriteNode] = []
+    private static let weatherParticleCount = 28
+    private(set) var weather: Weather = .clear
+
     init(pixelScale: Int, interactive: Bool) {
         self.pixelScale = max(1, pixelScale)
         self.interactive = interactive
@@ -120,6 +127,7 @@ final class TownScene: SKScene {
     func setReduceMotion(_ on: Bool) {
         reducesMotion = on
         for node in ambientLoops { node.isPaused = on }
+        weatherLayer.isHidden = on
     }
 
     func apply(_ next: TownSnapshot) {
@@ -136,8 +144,11 @@ final class TownScene: SKScene {
         if next.season != season {
             applySeason(next.season)
         }
-        if previous?.phase != next.phase || previous?.lateNight != next.lateNight {
-            applyPhase(next.phase, lateNight: next.lateNight, animated: animated)
+        if next.weather != weather {
+            applyWeather(next.weather, animated: animated)
+        }
+        if previous?.phase != next.phase || previous?.lateNight != next.lateNight || previous?.weather != next.weather {
+            applyPhase(next.phase, lateNight: next.lateNight, weather: next.weather, animated: animated)
         }
         // Residents pick up the new world (evening, a new building) at their next decision.
         lifeContext = LifeContext(snapshot: next)
@@ -199,6 +210,7 @@ final class TownScene: SKScene {
         buildActivityFeatures()
         buildDecorSlots()
         buildResidents()
+        buildWeather()
         buildVisitors()
         buildOverlays()
     }
@@ -410,8 +422,22 @@ final class TownScene: SKScene {
             resident.node.isHidden = true
             world.addChild(resident.node)
             tintables.append(resident.node)
+            tintables.append(resident.umbrella)
             resident.onFinished = { [weak self] finished in self?.residentFinished(finished) }
             residents.append(resident)
+        }
+    }
+
+    private func buildWeather() {
+        weatherLayer.zPosition = 160 // in front of the town, behind the selection arrow
+        weatherLayer.alpha = 0
+        world.addChild(weatherLayer)
+        for _ in 0..<Self.weatherParticleCount {
+            let particle = SKSpriteNode(texture: TownArt.raindrop)
+            particle.anchorPoint = .zero
+            weatherLayer.addChild(particle)
+            weatherParticles.append(particle)
+            ambientLoops.append(particle)
         }
     }
 
@@ -545,6 +571,63 @@ final class TownScene: SKScene {
         return node
     }
 
+    private func applyWeather(_ next: Weather, animated: Bool) {
+        weather = next
+        let fadeTime = animated ? 1.5 : 0
+        weatherLayer.removeAction(forKey: "stop")
+        if next.isWet {
+            startParticles(next)
+        } else {
+            // Let the last drops keep falling while the layer fades, then stop them.
+            weatherLayer.run(.sequence([.wait(forDuration: fadeTime), .run { [weak self] in self?.stopParticles() }]),
+                             withKey: "stop")
+        }
+        fade(weatherLayer, to: next.isWet ? 1 : 0, duration: fadeTime)
+        for resident in residents { resident.setUmbrella(next == .rain) }
+        if selectionArrow.parent !== world, selectionArrow.parent != nil {
+            selectionArrow.position.y = residentArrowHeight
+        }
+    }
+
+    /// Above a resident's head, or above the umbrella in the rain.
+    var residentArrowHeight: CGFloat { weather == .rain ? 16 : 11 }
+
+    /// Each particle falls from above the town to the ground on its own lane and period,
+    /// starting part-way down so the view fills at once. Rain streaks down at a slant;
+    /// snow drifts slowly side to side.
+    private func startParticles(_ weather: Weather) {
+        let top: CGFloat = 62
+        for (i, particle) in weatherParticles.enumerated() {
+            particle.removeAction(forKey: "fall")
+            let texture = weather == .snow ? TownArt.snowflake : TownArt.raindrop
+            particle.texture = texture
+            particle.size = texture.size()
+            let x = CGFloat((i * 47 + 13) % 150) - 5
+            let bottom = CGFloat(3 + (i * 7) % 11)
+            let drop = bottom - top
+            let progress = CGFloat((i * 5) % 11) / 11
+            let period: Double
+            let slant: CGFloat
+            if weather == .rain {
+                period = 0.7 + Double(i % 5) * 0.08
+                slant = -3
+            } else {
+                period = 5 + Double(i % 7) * 0.6
+                slant = i % 2 == 0 ? 2 : -2
+            }
+            let restart = SKAction.move(to: CGPoint(x: x, y: top), duration: 0)
+            let fall = SKAction.moveBy(x: slant, y: drop, duration: period)
+            particle.position = CGPoint(x: x + slant * progress, y: top + drop * progress)
+            let firstFall = SKAction.moveBy(x: slant * (1 - progress), y: drop * (1 - progress),
+                                            duration: period * Double(1 - progress))
+            particle.run(.sequence([firstFall, .repeatForever(.sequence([restart, fall]))]), withKey: "fall")
+        }
+    }
+
+    private func stopParticles() {
+        for particle in weatherParticles { particle.removeAction(forKey: "fall") }
+    }
+
     private func applySeason(_ next: Season) {
         season = next
         for retexture in seasonalSprites { retexture(next) }
@@ -608,7 +691,10 @@ final class TownScene: SKScene {
         }
     }
 
-    static func skyColor(_ phase: DayPhase) -> NSColor {
+    static func skyColor(_ phase: DayPhase, weather: Weather = .clear) -> NSColor {
+        if weather.isWet && (phase == .dawn || phase == .day) {
+            return NSColor(calibratedRed: 0.66, green: 0.71, blue: 0.78, alpha: 1)
+        }
         switch phase {
         case .dawn: return NSColor(calibratedRed: 0.96, green: 0.80, blue: 0.72, alpha: 1)
         case .day: return NSColor(calibratedRed: 0.76, green: 0.89, blue: 0.95, alpha: 1)
@@ -617,13 +703,21 @@ final class TownScene: SKScene {
         }
     }
 
-    private func applyPhase(_ phase: DayPhase, lateNight: Bool, animated: Bool) {
-        let tint: (NSColor, CGFloat)
+    private func applyPhase(_ phase: DayPhase, lateNight: Bool, weather: Weather, animated: Bool) {
+        var tint: (NSColor, CGFloat)
         switch phase {
         case .dawn: tint = (NSColor(calibratedRed: 1.0, green: 0.72, blue: 0.62, alpha: 1), 0.18)
         case .day: tint = (.white, 0)
         case .dusk: tint = (NSColor(calibratedRed: 0.95, green: 0.52, blue: 0.45, alpha: 1), 0.28)
         case .night: tint = (NSColor(calibratedRed: 0.16, green: 0.2, blue: 0.42, alpha: 1), 0.5)
+        }
+        // Overcast: a grey wash by day, a deeper dusk. Night already looks wet enough.
+        if weather.isWet {
+            switch phase {
+            case .dawn, .day: tint = (NSColor(calibratedRed: 0.55, green: 0.6, blue: 0.7, alpha: 1), 0.3)
+            case .dusk: tint.1 = 0.4
+            case .night: break
+            }
         }
         let duration = animated ? 3.0 : 0
         for node in tintables {
@@ -638,9 +732,9 @@ final class TownScene: SKScene {
         if let backdrop {
             backdrop.removeAction(forKey: "tint")
             if animated {
-                backdrop.run(.colorize(with: Self.skyColor(phase), colorBlendFactor: 1, duration: duration), withKey: "tint")
+                backdrop.run(.colorize(with: Self.skyColor(phase, weather: weather), colorBlendFactor: 1, duration: duration), withKey: "tint")
             } else {
-                backdrop.color = Self.skyColor(phase)
+                backdrop.color = Self.skyColor(phase, weather: weather)
             }
         }
         let lightsOn: CGFloat = phase.lightsOn ? 1 : 0
@@ -650,7 +744,7 @@ final class TownScene: SKScene {
         fade(starField, to: phase == .night ? 1 : 0, duration: duration)
         fade(fireflies, to: phase == .night ? 1 : 0, duration: duration)
         captureBackdropFollow(phase, animated: animated)
-        fade(sun, to: phase == .night ? 0 : 1, duration: duration)
+        fade(sun, to: phase == .night || weather.isWet ? 0 : 1, duration: duration)
         fade(moon, to: phase == .night ? 1 : 0, duration: duration)
     }
 

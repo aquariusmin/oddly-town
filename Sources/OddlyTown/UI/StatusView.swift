@@ -11,7 +11,8 @@ struct StatusView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Level \(progress.level)").font(.title2.bold())
-                Text("of \(progress.maxLevel) · \(status.season.displayName)").foregroundStyle(.secondary)
+                Text("of \(progress.maxLevel) · \(status.season.displayName)\(status.weather.isWet ? " · \(status.weather.displayName)" : "")")
+                    .foregroundStyle(.secondary)
                 Spacer()
                 if status.isDemo {
                     Text("DEMO").font(.caption.bold())

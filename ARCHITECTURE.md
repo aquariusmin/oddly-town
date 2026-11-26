@@ -63,7 +63,11 @@
 - 화면 위치(장소 → 좌표): `TownScene.position(of:resident:)`, `TownArt.decorSlots`
 - 계절(달력, 반구 추정, 설정): `OddlyTownCore/Seasons.swift`. 계절 모습(팔레트, 눈 덮개): `Town/TownArt+Seasons.swift`, `PixelArt.snowCapped`
   - 장면은 `seasonalSprite`로 만든 노드만 기억해 두었다가 계절이 바뀔 때 텍스처만 교체합니다.
-  - 설계와 다음 단계(날씨, 일지): [docs/DESIGN-SEASONS-JOURNAL.md](docs/DESIGN-SEASONS-JOURNAL.md)
+  - 설계와 다음 단계(일지): [docs/DESIGN-SEASONS-JOURNAL.md](docs/DESIGN-SEASONS-JOURNAL.md)
+- 날씨(빈도·시간대): `WeatherRules.standard`, 결정 방식: `WeatherForecast` (날짜 + 계절 + `TownState.weatherSeed`, 저장 안 함)
+  - 날씨에 따른 주민 행동: `ResidentBehaviorRules.wetFactors`, `wetHomeWeight`, `winterDuskHomeFactor`
+  - 날씨에 따른 이벤트: `TownEventRule.weathers`
+  - 화면: `TownScene.applyWeather`(미리 만든 입자 28개, `ambientLoops`), `applyPhase`의 흐린 색조, 주민 우산(`ResidentSprite.umbrella`)
 
 ## 데이터 흐름
 
