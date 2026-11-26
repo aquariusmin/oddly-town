@@ -1,5 +1,28 @@
 # Testing
 
+## 실기기 빠른 확인 — Unreleased (약 15분)
+
+계절·날씨·일지·로그인 실행·동작 줄이기는 CI에서 빌드·테스트·스모크 실행만 통과했습니다. **화면은 아직 아무도 보지 않았습니다.** 아래 순서대로 보면 각 기능을 한 번씩 볼 수 있습니다. 자세한 항목은 아래 섹션에 있습니다.
+
+```bash
+scripts/install-ci-build.sh        # main의 최신 CI 빌드를 /Applications에 설치하고 실행 (로컬 빌드 불필요)
+"/Applications/Oddly Town.app/Contents/MacOS/OddlyTown" --dev    # 개발자 모드로 다시 실행
+```
+
+| # | 확인 | 방법 | 기대 |
+|---|---|---|---|
+| 1 | 가을 모습 (오늘 날짜) | 실행 직후 Ambient | 단풍, 마른 풀. Town Status에 "Autumn" |
+| 2 | 계절 4종 | Developer → Demo Mode → Season: … | 즉시 바뀜, 겨울 지붕 눈이 보임, 나무 흔들림 유지 |
+| 3 | 비·눈 | Demo → Weather: Rain / Snow | 빗줄기·눈송이, 흐린 색조, 노란 우산 |
+| 4 | Town Mode | 마을 더블클릭 | 계절·날씨 동일, 패널 문구가 잘리지 않음 |
+| 5 | 일지 | Demo 끄기 → Developer → Grow +1 hour ×2 → Town Mode | "Today in town"에 레벨업·새 건물 줄이 굵게, 196pt 안에 들어감 |
+| 6 | 말풍선 | Ambient 마을 클릭 → 4초 안에 다시 클릭 | "Today: …"가 280pt 창 안에 들어감 |
+| 7 | 동작 줄이기 | 시스템 설정 → 손쉬운 사용 → 디스플레이 → 동작 줄이기 | 구름·나무·연기·빗줄기 멈춤/숨김, 주민은 걸음 |
+| 8 | 로그인 시 열기 | Settings → Startup (개발자 모드가 아닌 `/Applications` 앱) | 로그인 항목에 등장, 로그아웃→로그인 후 자동 실행 |
+| 9 | 성능 | 일반 실행 후 `scripts/measure-resources.sh -d 300 --max-cpu 1 --max-mem 150` | 평균 CPU 1% 이하, 메모리 150MB 이하 (결과 붙여넣기) |
+
+문제가 있으면 번호와 함께 스크린샷이나 한 줄 설명을 남겨 주세요. 9번 출력은 그대로 붙여 주시면 됩니다.
+
 ## 자동 테스트
 
 | 명령 | 환경 | 범위 |
