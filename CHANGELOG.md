@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] — Capture Studio
+## [Unreleased] — Capture Studio, Seasons
 
 ### Added
 - **Capture Studio** (Developer → Capture Studio…): 홍보 영상 촬영 전용 창. Ambient Mode와 별개이고, Demo 상태만 씁니다(저장 안 됨).
@@ -12,6 +12,15 @@
   - 촬영 가이드: [docs/CAPTURE.md](docs/CAPTURE.md).
 - 밤 조명: 문 앞·가로등·랜턴 아래 땅 조명, 달무리, 반딧불이.
 - `CaptureLayout`·`CapturePreset` 테스트 10개 (총 80개).
+- **계절** (설계: [docs/DESIGN-SEASONS-JOURNAL.md](docs/DESIGN-SEASONS-JOURNAL.md) 4a): 실제 달력의 기상학적 계절을 따릅니다.
+  - 봄: 분홍 꽃 핀 나무, 새싹색 풀. 가을: 단풍, 마른 풀. 겨울: 눈 덮인 땅, 지붕·굴뚝·나무·우물·울타리 위 2px 눈, 상록수 색.
+  - 팔레트 교체와 생성된 눈 덮개(`PixelArt.snowCapped`)라 같은 ASCII 아트에서 나옵니다. 텍스처는 계절별로 캐시하고, 계절이 바뀔 때 텍스처만 바꿉니다.
+  - PNG 오버라이드: `<이름>@<계절>.png`. 여름은 기존 이름 그대로입니다.
+  - 반구는 시간대로 추정하고, Settings → Seasons(Follow the calendar / Northern / Southern / Off)로 바꿀 수 있습니다. `settings.json`에 `seasons` 필드가 추가되고, 없으면 자동입니다(스키마 버전 유지).
+  - 계절이 Town Status, Town Mode 패널, 설정에 표시됩니다.
+  - Demo: Season 메뉴. Capture Studio: **E** 키 계절 순환, 프리셋 6 "Winter night".
+  - 계절 프리뷰: `scripts/render-art-preview.py … docs/season-preview.png`.
+  - 계절 테스트 8개 (총 88개): 월 경계, 남반구, 현지 자정 기준 경계, 시간대 추정, 설정, 스냅샷, 관대한 디코딩, 프리셋.
 - **로그인 시 열기** (Settings → Startup, 메뉴 "Open at Login"): `SMAppService.mainApp`을 씁니다.
   - 상태는 시스템이 관리하므로 `settings.json`에 저장하지 않고, 매번 시스템에서 읽습니다. 시스템 설정에서 바꿔도 앱으로 돌아오면 반영됩니다.
   - macOS 승인이 필요하면 안내 후 시스템 설정 → 로그인 항목을 엽니다.

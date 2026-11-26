@@ -9,6 +9,7 @@ struct DemoState {
     var cycling = false
     var extras: Set<TownFeature> = []
     var decor: DecorLayout
+    var season: Season?         // nil = follow the real calendar (and the Seasons setting)
 }
 
 /// Wires the pure core (growth, activity, behaviour, events, persistence) to the macOS
@@ -486,10 +487,11 @@ final class AppController: NSObject {
                 features: demoUnlocked(demo),
                 decor: demo.decor,
                 phase: demo.phase ?? DayPhase.at(now),
-                lateNight: demo.phase == nil && TownSnapshot.isLateNight(now)
+                lateNight: demo.phase == nil && TownSnapshot.isLateNight(now),
+                season: demo.season ?? model.settings.seasons.season(at: now)
             )
         }
-        return TownSnapshot.make(state: state, engine: engine, now: now)
+        return TownSnapshot.make(state: state, engine: engine, now: now, seasons: model.settings.seasons)
     }
 
     private func demoUnlocked(_ demo: DemoState) -> Set<TownFeature> {
@@ -528,7 +530,8 @@ final class AppController: NSObject {
             activitySeconds: state.activitySeconds,
             features: snapshot.features,
             unlocked: unlocked,
-            isDemo: demo != nil
+            isDemo: demo != nil,
+            season: snapshot.season
         )
         let decor = demo?.decor ?? state.decor
         if model.decor != decor { model.decor = decor }
@@ -570,7 +573,8 @@ final class AppController: NSObject {
     /// Sets level, time, buildings and decorations in one go, then what residents do.
     func applyCapturePreset(_ preset: CapturePreset) {
         stopDemoCycle()
-        demo = DemoState(level: preset.level, phase: preset.phase, extras: preset.extras, decor: preset.decor)
+        demo = DemoState(level: preset.level, phase: preset.phase, extras: preset.extras, decor: preset.decor,
+                         season: preset.season)
         refresh()
         if let activity = preset.residents { demoResidents(activity) }
         captureStudio?.didApply(preset)
@@ -614,6 +618,15 @@ final class AppController: NSObject {
         demo?.phase = phase
         refresh()
     }
+
+    func setDemoSeason(_ season: Season?) {
+        guard demo != nil else { return }
+        demo?.season = season
+        refresh()
+    }
+
+    /// The season the scenes are showing right now (real or Demo).
+    var currentSeason: Season { lastSnapshot?.season ?? .summer }
 
     func toggleDemoCycle() {
         guard demo != nil else { return }

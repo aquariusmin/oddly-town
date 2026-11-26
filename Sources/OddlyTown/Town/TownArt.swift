@@ -19,6 +19,7 @@ enum TownArt {
         "c": 0xFFFFFF, "C": 0xE1EAF3, // cloud
         "P": 0xE4C48F, "Q": 0xCDAA74, // path, path edge
         "L": 0xB8E27E, // grass highlight
+        "*": 0xF4F8FB, // snow (winter caps, see TownArt+Seasons)
     ]
 
     /// Textures are built once and shared by Ambient Mode and Town Mode.

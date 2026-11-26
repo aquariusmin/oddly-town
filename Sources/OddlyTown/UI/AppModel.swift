@@ -10,6 +10,7 @@ struct TownStatus {
     /// Everything unlocked, including features the user hid.
     var unlocked: Set<TownFeature> = []
     var isDemo: Bool
+    var season: Season = .summer
 }
 
 /// Text for Town Mode's "selected" panel.

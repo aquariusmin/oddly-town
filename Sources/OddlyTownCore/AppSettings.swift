@@ -42,6 +42,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var floatAboveWindows = true
     public var showOverFullScreenApps = false
     public var activityTrackingEnabled = false
+    /// Added in 0.3 (no schema bump: missing → `.automatic`).
+    public var seasons: SeasonSetting = .automatic
     /// Bundle ID → category, takes priority over the built-in table.
     public var categoryOverrides: [String: ActivityCategory] = [:]
 
@@ -61,7 +63,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, windowWidth, corner, customOrigin, townVisible, animationsEnabled, clickThrough
-        case floatAboveWindows, showOverFullScreenApps, activityTrackingEnabled, categoryOverrides
+        case floatAboveWindows, showOverFullScreenApps, activityTrackingEnabled, categoryOverrides, seasons
     }
 
     public init(from decoder: Decoder) throws {
@@ -81,6 +83,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         floatAboveWindows = (try? c.decodeIfPresent(Bool.self, forKey: .floatAboveWindows)) ?? d.floatAboveWindows
         showOverFullScreenApps = (try? c.decodeIfPresent(Bool.self, forKey: .showOverFullScreenApps)) ?? d.showOverFullScreenApps
         activityTrackingEnabled = (try? c.decodeIfPresent(Bool.self, forKey: .activityTrackingEnabled)) ?? d.activityTrackingEnabled
+        seasons = (try? c.decodeIfPresent(SeasonSetting.self, forKey: .seasons)) ?? d.seasons
         let rawOverrides = (try? c.decodeIfPresent([String: String].self, forKey: .categoryOverrides)) ?? [:]
         categoryOverrides = rawOverrides.compactMapValues(ActivityCategory.init(rawValue:))
         if corner == .custom && customOrigin == nil { corner = .bottomRight }

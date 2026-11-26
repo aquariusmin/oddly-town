@@ -61,6 +61,9 @@
 - 장식 종류와 필요 레벨: `DecorItem`
 - 앱 분류표: `ActivityClassifier`
 - 화면 위치(장소 → 좌표): `TownScene.position(of:resident:)`, `TownArt.decorSlots`
+- 계절(달력, 반구 추정, 설정): `OddlyTownCore/Seasons.swift`. 계절 모습(팔레트, 눈 덮개): `Town/TownArt+Seasons.swift`, `PixelArt.snowCapped`
+  - 장면은 `seasonalSprite`로 만든 노드만 기억해 두었다가 계절이 바뀔 때 텍스처만 교체합니다.
+  - 설계와 다음 단계(날씨, 일지): [docs/DESIGN-SEASONS-JOURNAL.md](docs/DESIGN-SEASONS-JOURNAL.md)
 
 ## 데이터 흐름
 

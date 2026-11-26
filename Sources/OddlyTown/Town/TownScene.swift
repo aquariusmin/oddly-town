@@ -74,6 +74,11 @@ final class TownScene: SKScene {
     private var ambientLoops: [SKNode] = []
     private(set) var reducesMotion = false
 
+    /// Re-textures one seasonal sprite (ground, trees, houses, props). Nodes stay; only
+    /// their textures change, once per season.
+    private var seasonalSprites: [(Season) -> Void] = []
+    private(set) var season: Season = .summer
+
     init(pixelScale: Int, interactive: Bool) {
         self.pixelScale = max(1, pixelScale)
         self.interactive = interactive
@@ -127,6 +132,9 @@ final class TownScene: SKScene {
         }
         if previous?.decor != next.decor {
             applyDecor(next.decor)
+        }
+        if next.season != season {
+            applySeason(next.season)
         }
         if previous?.phase != next.phase || previous?.lateNight != next.lateNight {
             applyPhase(next.phase, lateNight: next.lateNight, animated: animated)
@@ -274,7 +282,7 @@ final class TownScene: SKScene {
     }
 
     private func buildGround() {
-        sprite(TownArt.tex("ground", TownArt.groundRows()), left: 0, y: 0, z: -20)
+        seasonalSprite("ground", TownArt.groundRows(), role: .ground, left: 0, y: 0, z: -20)
     }
 
     private func buildBaseTown() {
@@ -282,9 +290,9 @@ final class TownScene: SKScene {
         let cottage = house(TownArt.cottageRows, palette: TownArt.palette, name: "cottage", left: 14, doorX: 21,
                             owner: nil, parent: world)
         cottageBounds = cottage.frame
-        sprite(TownArt.tex("mailbox", TownArt.mailboxRows), left: 31, y: 12)
+        seasonalSprite("mailbox", TownArt.mailboxRows, role: .structure, left: 31, y: 12)
         swayingTree(TownArt.treeRows, name: "tree", centerX: 39, y: 12, period: 2.1)
-        sprite(TownArt.tex("rock", TownArt.rockRows), left: 132, y: 12)
+        seasonalSprite("rock", TownArt.rockRows, role: .structure, left: 132, y: 12)
     }
 
     private func buildLevelFeatures() {
@@ -292,9 +300,8 @@ final class TownScene: SKScene {
         swayingTree(TownArt.youngTreeRows, name: "young-tree", centerX: 74, y: 13, period: 1.8, parent: youngTree)
 
         let fence = featureNode(.picketFence)
-        let fenceTexture = TownArt.tex("fence", TownArt.fenceRows)
-        sprite(fenceTexture, left: 112, y: 3, parent: fence)
-        sprite(fenceTexture, left: 123, y: 3, parent: fence)
+        seasonalSprite("fence", TownArt.fenceRows, role: .structure, left: 112, y: 3, parent: fence)
+        seasonalSprite("fence", TownArt.fenceRows, role: .structure, left: 123, y: 3, parent: fence)
 
         let flowers = featureNode(.wildflowers)
         let flowerTexture = TownArt.tex("wildflowers", TownArt.wildflowerRows)
@@ -311,7 +318,7 @@ final class TownScene: SKScene {
               owner: .secondHouse, parent: secondHouse)
 
         let well = featureNode(.well)
-        sprite(TownArt.tex("well", TownArt.wellRows), left: 62, y: 13, parent: well)
+        seasonalSprite("well", TownArt.wellRows, role: .structure, left: 62, y: 13, parent: well)
 
         // Residents are drawn separately; these empty containers only exist for selection info.
         _ = featureNode(.secondResident)
@@ -492,8 +499,8 @@ final class TownScene: SKScene {
     @discardableResult
     private func house(_ rows: [String], palette: [Character: UInt32], name: String, left: CGFloat, doorX: CGFloat,
                        owner: TownFeature?, parent: SKNode) -> SKSpriteNode {
-        let body = sprite(TownArt.tex(name, rows, palette: palette), left: left, y: 13, parent: parent)
-        sprite(TownArt.tex("path-branch", TownArt.pathBranchRows), left: doorX, y: 8, z: -10, parent: parent)
+        let body = seasonalSprite(name, rows, palette: palette, role: .structure, left: left, y: 13, parent: parent)
+        seasonalSprite("path-branch", TownArt.pathBranchRows, role: .ground, left: doorX, y: 8, z: -10, parent: parent)
         let windows = sprite(TownArt.lights(name, rows), left: left, y: 13, z: body.zPosition + 0.5, tint: false, parent: parent)
         windows.alpha = 0
         lights.append((owner, windows))
@@ -509,12 +516,38 @@ final class TownScene: SKScene {
 
     private func swayingTree(_ rows: [String], name: String, centerX: CGFloat, y: CGFloat, period: Double,
                              parent: SKNode? = nil) {
-        let frames = [TownArt.tex(name, rows),
-                      TownArt.cached("\(name)-sway") { PixelArt.texture(PixelArt.shiftRows(rows, 0..<5, by: 1), palette: TownArt.palette) }]
+        let swayRows = PixelArt.shiftRows(rows, 0..<5, by: 1)
+        let frames = { (season: Season) in
+            [TownArt.seasonal(name, rows, role: .foliage, season: season),
+             TownArt.seasonal("\(name)-sway", swayRows, role: .foliage, season: season)]
+        }
         let width = CGFloat(rows.map(\.count).max() ?? 0)
-        let tree = sprite(frames[0], left: (centerX - width / 2).rounded(.down), y: y, parent: parent)
-        tree.run(.repeatForever(.animate(with: frames, timePerFrame: period)))
+        let tree = sprite(frames(season)[0], left: (centerX - width / 2).rounded(.down), y: y, parent: parent)
+        tree.run(.repeatForever(.animate(with: frames(season), timePerFrame: period)), withKey: "sway")
         ambientLoops.append(tree)
+        seasonalSprites.append { season in
+            let next = frames(season)
+            tree.texture = next[0]
+            tree.run(.repeatForever(.animate(with: next, timePerFrame: period)), withKey: "sway")
+        }
+    }
+
+    /// A sprite that follows the seasons (see `TownArt.seasonal`).
+    @discardableResult
+    private func seasonalSprite(_ name: String, _ rows: [String], palette: [Character: UInt32] = TownArt.palette,
+                                role: SeasonRole, left: CGFloat, y: CGFloat, z: CGFloat? = nil,
+                                parent: SKNode? = nil) -> SKSpriteNode {
+        let node = sprite(TownArt.seasonal(name, rows, palette: palette, role: role, season: season),
+                          left: left, y: y, z: z, parent: parent)
+        seasonalSprites.append { season in
+            node.texture = TownArt.seasonal(name, rows, palette: palette, role: role, season: season)
+        }
+        return node
+    }
+
+    private func applySeason(_ next: Season) {
+        season = next
+        for retexture in seasonalSprites { retexture(next) }
     }
 
     private func glow(radius: Int, center: CGPoint, parent: SKNode) -> SKSpriteNode {
