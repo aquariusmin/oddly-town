@@ -12,13 +12,23 @@
   - 촬영 가이드: [docs/CAPTURE.md](docs/CAPTURE.md).
 - 밤 조명: 문 앞·가로등·랜턴 아래 땅 조명, 달무리, 반딧불이.
 - `CaptureLayout`·`CapturePreset` 테스트 10개 (총 80개).
+- **CI** (`.github/workflows/ci.yml`): 푸시·PR마다 macOS에서 앱 타깃까지 빌드하고 `swift test`, `.app` 번들링, 스모크 실행을 합니다. Linux(`swift:6.0`)에서는 코어 테스트를 돌립니다.
+  - Swift 컴파일러 경고를 PR에 주석으로 달고 요약에 개수를 적습니다(빌드는 실패시키지 않음).
+  - 빌드한 `.app`(zip), 스모크 로그, 리소스 샘플을 아티팩트로 14일 보관합니다.
+- `scripts/smoke-run.sh`: 번들 앱을 실행해 계속 살아 있는지 확인하고, CPU·메모리를 샘플링한 뒤 SIGTERM으로 끄고 `town.json`이 저장됐는지 확인합니다.
+- `scripts/measure-resources.sh`: 실행 중인 앱의 CPU(누적 CPU 시간 기준 실제 평균)와 메모리(RSS, macOS에서는 Activity Monitor와 같은 physical footprint)를 CSV로 기록합니다. `--max-cpu`/`--max-mem`으로 목표 미달을 판정합니다.
+
+### Fixed
+- SIGTERM(`kill`, launchd, 스크립트)으로 종료하면 `applicationWillTerminate`를 건너뛰어 마지막 저장이 빠지던 문제. 이제 SIGTERM은 일반 종료(`NSApp.terminate`)로 처리합니다.
+- `TownScene.buildDecorSlots`의 사용하지 않는 변수 경고.
 
 ### Changed
 - 주민에게 1px 외곽선과 눈을 추가했습니다. Pip 셔츠는 세이지 → 청록, Juno 셔츠는 모래 → 자두색으로 바꿨습니다(잔디·길과 구분되지 않던 문제).
 - 땅: 길 가장자리 자국과 잔디 하이라이트.
 
 ### Not verified
-- 앱 타깃(AppKit/SpriteKit)은 Linux에서 작성해 **아직 Mac에서 빌드·실행하지 않았습니다.** 코어 테스트 80개는 Docker에서 통과했습니다.
+- 앱 타깃(AppKit/SpriteKit)은 Linux에서 작성해 **아직 Mac에서 빌드·실행하지 않았습니다.** 코어 테스트 80개는 Docker에서 통과했습니다. 첫 CI 실행이 Mac 빌드의 첫 확인이 됩니다.
+- CI 스모크 실행은 GitHub의 macOS VM에서 돌기 때문에, 실행·종료·저장이 되는지와 회귀 여부만 알려줍니다. 실기기 성능 수치를 대신하지는 않습니다.
 
 ## [0.2.0-alpha] — 2026-10-21 — Ambient Living World
 

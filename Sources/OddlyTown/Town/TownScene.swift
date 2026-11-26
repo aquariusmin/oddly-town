@@ -347,7 +347,7 @@ final class TownScene: SKScene {
     }
 
     private func buildDecorSlots() {
-        for (index, origin) in TownArt.decorSlots.enumerated() {
+        for origin in TownArt.decorSlots {
             var items: [DecorItem: SKNode] = [:]
             for item in DecorItem.allCases {
                 let holder = SKNode()

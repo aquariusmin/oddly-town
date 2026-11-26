@@ -1,5 +1,7 @@
 # Oddly Town
 
+[![CI](https://github.com/aquariusmin/oddly-town/actions/workflows/ci.yml/badge.svg)](https://github.com/aquariusmin/oddly-town/actions/workflows/ci.yml)
+
 > 컴퓨터를 쓰는 동안 화면 한쪽에서 작은 마을이 조용히 살아 움직이고, 시간과 사용 패턴에 따라 조금씩 자라는 macOS 메뉴 막대 앱.
 > **Less Distraction, More Life.**
 
@@ -125,7 +127,16 @@ ODDLY_DEV=1 ODDLY_TIME_SCALE=120 swift run OddlyTown
 ```bash
 swift test                       # Mac
 scripts/test-core-docker.sh      # Linux/Docker (공식 swift:6.0 이미지, 코어만)
+
+scripts/build-app.sh && scripts/smoke-run.sh -l dev -- --dev   # 실행 → 60초 샘플링 → 종료 → 저장 확인
+scripts/measure-resources.sh -d 1800 -o ambient.csv            # 실행 중인 앱의 CPU·메모리 기록
 ```
+
+**CI** (GitHub Actions)는 푸시와 PR마다 다음을 실행합니다.
+- macOS: 앱 타깃까지 빌드, `swift test`, `.app` 번들링, 스모크 실행(일반·개발자 모드 각 60초).
+- Linux: 코어 테스트.
+
+Linux에서 쓴 앱 코드가 Mac에서 컴파일되는지 바로 알 수 있습니다. 빌드한 `.app`은 실행 결과의 아티팩트에서 내려받을 수 있습니다. 스모크 실행의 CPU·메모리 수치는 GitHub VM에서 잰 것이라 회귀를 찾는 데만 씁니다.
 
 `OddlyTownCore`는 Foundation만 사용하므로 Linux에서도 테스트됩니다. 대상은 성장 엔진, 분류기, 누적기, 주민 행동, 이벤트, 장식, 저장·마이그레이션, 레이아웃입니다. 테스트는 XCTest가 아닌 **Swift Testing**으로 작성했습니다. XCTest는 Xcode 앱에만 들어 있어서 Command Line Tools 환경에서는 쓸 수 없기 때문입니다. UI·시스템 통합은 [docs/TESTING.md](docs/TESTING.md)의 수동 체크리스트로 확인합니다.
 
@@ -136,7 +147,7 @@ scripts/test-core-docker.sh      # Linux/Docker (공식 swift:6.0 이미지, 코
 | Apple Silicon Mac, Command Line Tools (macOS 27 SDK) | 빌드·실행 확인, `swift test` 36개 통과 | `swift build` 성공, `swift test` **70개 통과** (12개 스위트) |
 | Linux (WSL2) + Docker `swift:6.0-jammy` | 코어 테스트 36개 통과 | 코어 테스트 **70개 통과** |
 
-v0.2 코드는 Linux에서 작성되었지만, Mac에서 수정 없이 첫 빌드에 성공했습니다. 컴파일러 경고는 사용하지 않는 변수 1건(`TownScene.swift`의 `index`)뿐입니다.
+v0.2 코드는 Linux에서 작성되었지만, Mac에서 수정 없이 첫 빌드에 성공했습니다. 당시 컴파일러 경고는 사용하지 않는 변수 1건(`TownScene.swift`의 `index`)뿐이었고, 지금은 고쳤습니다. 이후 경고는 CI가 PR에 표시합니다.
 
 빌드 중 `ld: warning: search path ... not found` 경고는 Command Line Tools 환경에서 나오는 것이므로 무시해도 됩니다.
 
