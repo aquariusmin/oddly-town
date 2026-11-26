@@ -79,6 +79,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
         items.append(item("Cycle Day & Night (5 s)", #selector(demoCycle), on: demo?.cycling == true))
         items.append(.separator())
+        items.append(item("Season: Real Calendar", #selector(demoSeason(_:)), on: demo != nil && demo?.season == nil, tag: -1))
+        for (index, season) in Season.allCases.enumerated() {
+            items.append(item("Season: \(season.displayName)", #selector(demoSeason(_:)), on: demo?.season == season, tag: index))
+        }
+        items.append(.separator())
         let activityFeatures: [(TownFeature, String)] = [
             (.workshop, "Development → Workshop"),
             (.artGarden, "Creative → Art Garden"),
@@ -166,6 +171,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func demoPhase(_ sender: NSMenuItem) {
         let phases = DayPhase.allCases
         controller.setDemoPhase(phases.indices.contains(sender.tag) ? phases[sender.tag] : nil)
+    }
+
+    @objc private func demoSeason(_ sender: NSMenuItem) {
+        let seasons = Season.allCases
+        controller.setDemoSeason(seasons.indices.contains(sender.tag) ? seasons[sender.tag] : nil)
     }
 
     @objc private func demoFeature(_ sender: NSMenuItem) {

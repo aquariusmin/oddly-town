@@ -56,6 +56,26 @@ enum PixelArt {
         }
     }
 
+    /// Winter: in every column the top `depth` opaque pixels turn to snow. An outline ('k')
+    /// on top is skipped so shapes keep their outline; snow stops at another outline,
+    /// a window ('y') or a gap.
+    static func snowCapped(_ rows: [String], depth: Int = 2, snow: Character = "*") -> [String] {
+        var grid = rows.map(Array.init)
+        let width = grid.map(\.count).max() ?? 0
+        func opaque(_ x: Int, _ y: Int) -> Bool { y < grid.count && x < grid[y].count && grid[y][x] != "." }
+        for x in 0..<width {
+            guard var y = grid.indices.first(where: { opaque(x, $0) }) else { continue }
+            if grid[y][x] == "k" { y += 1 }
+            var placed = 0
+            while placed < depth, opaque(x, y), grid[y][x] != "k", grid[y][x] != "y" {
+                grid[y][x] = snow
+                y += 1
+                placed += 1
+            }
+        }
+        return grid.map { String($0) }
+    }
+
     /// `pixel(x, y)` with y = 0 at the top row. Returns (0xRRGGBB, alpha) or nil for transparent.
     static func make(width: Int, height: Int, pixel: (Int, Int) -> (UInt32, Double)?) -> SKTexture {
         guard width > 0, height > 0 else { return SKTexture() }

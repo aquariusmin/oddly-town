@@ -113,6 +113,23 @@ public struct CapturePreset: Equatable, Sendable {
     public let residents: ResidentActivity?
     public let zoom: Int
     public let focus: CaptureFocus
+    /// nil = the real calendar's season.
+    public let season: Season?
+
+    public init(key: String, title: String, level: Int, phase: DayPhase, extras: Set<TownFeature>,
+                decor: DecorLayout, residents: ResidentActivity?, zoom: Int, focus: CaptureFocus,
+                season: Season? = nil) {
+        self.key = key
+        self.title = title
+        self.level = level
+        self.phase = phase
+        self.extras = extras
+        self.decor = decor
+        self.residents = residents
+        self.zoom = zoom
+        self.focus = focus
+        self.season = season
+    }
 
     public static let activityFeatures: Set<TownFeature> = [.workshop, .artGarden, .readingNook, .festivalBunting]
 
@@ -132,6 +149,9 @@ public struct CapturePreset: Equatable, Sendable {
         CapturePreset(key: "5", title: "Fully grown", level: 3, phase: .day, extras: activityFeatures,
                       decor: DecorLayout(slots: [.bench, .flowerBox, .lantern, .mushrooms]),
                       residents: .celebrating, zoom: 1, focus: .town),
+        CapturePreset(key: "6", title: "Winter night", level: 3, phase: .night, extras: [.workshop],
+                      decor: DecorLayout(slots: [.lantern, .bench, .sapling, .lantern]),
+                      residents: nil, zoom: 1, focus: .town, season: .winter),
     ]
 
     /// Decoration sets the O key cycles through.

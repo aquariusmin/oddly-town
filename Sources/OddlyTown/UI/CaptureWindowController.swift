@@ -147,6 +147,7 @@ final class CaptureWindowController: NSObject, NSWindowDelegate {
         case "n": setPhase(.night, instant: event.modifierFlags.contains(.shift))
         case "m": setPhase(.dawn, instant: event.modifierFlags.contains(.shift))
         case "c": controller.toggleDemoCycle()
+        case "e": controller.setDemoSeason(controller.currentSeason.next)
         case "r":
             let all = ResidentActivity.allCases
             let next = activity.map { all[((all.firstIndex(of: $0) ?? 0) + 1) % all.count] } ?? all[0]
@@ -235,8 +236,8 @@ final class CaptureWindowController: NSObject, NSWindowDelegate {
         }
         scene.setCaptureHelp("""
         CAPTURE STUDIO  \(framing.displayName) · \(rig.pointScale)× · zoom \(rig.zoom) · \(devicePx) px per art px · \(recorded)
-        \(presetTitle) · Level \(demo?.level ?? 1) · \(demo?.phase?.rawValue ?? "real clock") · residents: \(activity?.rawValue ?? "normal") · focus: \(focus) · \(rig.background.rawValue)
-        1-5 presets   L level   D/S/N/M day/dusk/night/dawn (Shift = instant)   C cycle
+        \(presetTitle) · Level \(demo?.level ?? 1) · \(demo?.phase?.rawValue ?? "real clock") · \(controller.currentSeason.rawValue)\(demo?.season == nil ? " (calendar)" : "") · residents: \(activity?.rawValue ?? "normal") · focus: \(focus) · \(rig.background.rawValue)
+        1-6 presets   L level   D/S/N/M day/dusk/night/dawn (Shift = instant)   C cycle   E season
         R residents   V event   O decorations   G activity buildings
         Z zoom   F follow   arrows move   X framing   +/- scale   B backdrop
         T DEMO tag   Space pause   H hide this   Esc close

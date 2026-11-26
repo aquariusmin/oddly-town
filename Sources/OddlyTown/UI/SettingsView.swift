@@ -37,6 +37,11 @@ struct SettingsView: View {
                 Toggle("Also show over full-screen apps", isOn: $model.settings.showOverFullScreenApps)
                 Toggle("Click-through (clicks pass to apps underneath)", isOn: $model.settings.clickThrough)
                 Toggle("Animations", isOn: $model.settings.animationsEnabled)
+                Picker("Seasons", selection: $model.settings.seasons) {
+                    ForEach(SeasonSetting.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                Text(seasonNote)
+                    .font(.caption).foregroundStyle(.secondary)
                 if model.reducesMotion {
                     Text("Reduce Motion is on in System Settings, so clouds, trees, smoke and fireflies hold still. Residents still go about their day.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -78,6 +83,19 @@ struct SettingsView: View {
 
     private var cornerChoices: [ScreenCorner] {
         ScreenCorner.allCases.filter { $0 != .custom || model.settings.corner == .custom }
+    }
+
+    private var seasonNote: String {
+        let now = model.status.isDemo ? "\(model.status.season.displayName) (Demo)" : model.status.season.displayName
+        switch model.settings.seasons {
+        case .automatic:
+            let guess = Hemisphere.guess(from: .current) == .southern ? "southern" : "northern"
+            return "Now: \(now). The town follows the calendar for the \(guess) hemisphere, guessed from your time zone."
+        case .northern, .southern:
+            return "Now: \(now)."
+        case .off:
+            return "The town stays in summer all year."
+        }
     }
 
     private var openAtLoginBinding: Binding<Bool> {

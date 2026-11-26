@@ -83,6 +83,17 @@
 - [ ] 동작 줄이기 끔 → 장식 움직임이 다시 시작됨
 - [ ] Capture Studio는 동작 줄이기와 관계없이 모든 움직임 유지
 
+### 계절 (Unreleased, 4a)
+`swift run OddlyTown --dev` → Developer → Demo Mode.
+- [ ] Season: Spring/Summer/Autumn/Winter → 땅, 나무, 지붕 눈이 즉시 바뀜. Ambient와 Town Mode가 같은 계절
+- [ ] Winter + Time: Night → 눈 위에 밤 색조, 창문 불빛이 눈에 가려지지 않음
+- [ ] Season: Real Calendar → 실제 계절로 돌아옴 (11월 = 가을, 12월 1일 0시부터 겨울)
+- [ ] Settings → Seasons: Off → 여름 모습, Southern → 12월에 여름. 설정 문구의 "Now:"가 맞음
+- [ ] Town Status와 Town Mode 패널에 계절 표시
+- [ ] Capture Studio: E로 계절 순환, 6 = Winter night, 1–5는 실제 계절
+- [ ] 나무 흔들림이 계절이 바뀐 뒤에도 계속됨. 동작 줄이기가 켜져 있으면 계절을 바꿔도 멈춘 채로 있음
+- [ ] 메모리: 계절을 여러 번 바꿔도 증가가 멈춤 (계절 텍스처는 계절당 한 번만 생성)
+
 ### 기타 확인
 - [ ] 실행 시 Dock 아이콘 없음. Ambient 마을 클릭 시 다른 앱의 키보드 포커스 유지
 - [ ] Settings → Size: 2×~6× 단계로만 바뀌고 픽셀이 흐려지지 않음
