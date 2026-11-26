@@ -26,7 +26,7 @@ final class ResidentSprite {
         node.zPosition = 100 - TownScene.pathY
         dots = SKSpriteNode(texture: TownArt.chatDots)
         dots.anchorPoint = CGPoint(x: 0.5, y: 0)
-        dots.position = CGPoint(x: 1, y: 9)
+        dots.position = CGPoint(x: 1, y: 10)
         dots.zPosition = 1
         dots.alpha = 0
         dots.name = "dots"

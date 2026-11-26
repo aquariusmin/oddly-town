@@ -4,6 +4,7 @@ import AppKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: AppController?
+    private var terminationSignal: DispatchSourceSignal?
 
     static func main() {
         let app = NSApplication.shared
@@ -18,6 +19,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = AppController(environment: .current())
         controller.start()
         self.controller = controller
+        quitNormallyOnSIGTERM()
+    }
+
+    /// `kill`, launchd and scripts (e.g. `scripts/smoke-run.sh`) stop the app with SIGTERM,
+    /// whose default action skips `applicationWillTerminate` and so the final save.
+    /// Route it through `NSApp.terminate` instead.
+    private func quitNormallyOnSIGTERM() {
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        source.setEventHandler {
+            MainActor.assumeIsolated { NSApp.terminate(nil) }
+        }
+        source.resume()
+        terminationSignal = source
     }
 
     func applicationWillTerminate(_ notification: Notification) {

@@ -30,6 +30,7 @@ final class AppController: NSObject {
     private let windows = WindowPresenter()
     private var menuBar: MenuBarController?
     private var townMode: TownModeWindowController?
+    private var captureStudio: CaptureWindowController?
     private var selection: TownSelection?
     private var selectionTimer: Timer?
 
@@ -125,9 +126,9 @@ final class AppController: NSObject {
         saveState()
     }
 
-    /// Every scene currently drawing the town (Ambient, plus Town Mode when open).
+    /// Every scene currently drawing the town (Ambient, plus Town Mode / Capture Studio when open).
     private var scenes: [TownScene] {
-        [overlay.scene] + (townMode.map { [$0.scene] } ?? [])
+        [overlay.scene] + (townMode.map { [$0.scene] } ?? []) + (captureStudio.map { [$0.scene] } ?? [])
     }
 
     // MARK: Time
@@ -171,7 +172,7 @@ final class AppController: NSObject {
         guard let snapshot = lastSnapshot else { return }
         let context = EventContext(level: snapshot.level, phase: snapshot.phase, lateNight: snapshot.lateNight,
                                    residentCount: snapshot.residentCount,
-                                   isVisible: overlay.isAnimating || townMode != nil)
+                                   isVisible: overlay.isAnimating || townMode != nil || captureStudio != nil)
         apply(events.update(now: now, elapsed: elapsed, context: context, using: &eventRNG))
     }
 
@@ -281,6 +282,7 @@ final class AppController: NSObject {
             townMode.show()
             return
         }
+        captureStudio?.close() // one big view of the town at a time
         let controller = TownModeWindowController(model: model)
         controller.onClose = { [weak self] in self?.townModeDidClose() }
         controller.scene.onSelect = { [weak self] selection in self?.townSelectionChanged(selection) }
@@ -309,7 +311,7 @@ final class AppController: NSObject {
         selection = nil
         model.selection = nil
         model.isTownModeOpen = false
-        overlay.setSuspended(false)
+        overlay.setSuspended(captureStudio != nil)
         overlay.requestRedraw()
     }
 
@@ -455,6 +457,7 @@ final class AppController: NSObject {
             lastSnapshot = snapshot
         }
         scenes.forEach { $0.setTag(sceneTag) }
+        refreshCaptureTag()
         let progress: GrowthProgress
         let unlocked: Set<TownFeature>
         if let demo {
@@ -479,6 +482,61 @@ final class AppController: NSObject {
     private func saveState() {
         ticksSinceSave = 0
         do { try townStore.save(state) } catch { NSLog("Oddly Town: could not save town: %@", "\(error)") }
+    }
+
+    // MARK: Capture Studio
+
+    var isCaptureStudioOpen: Bool { captureStudio != nil }
+
+    /// Developer only: opens the recording view. Turns Demo Mode on (nothing is saved)
+    /// and starts from the first preset.
+    func openCaptureStudio() {
+        if let captureStudio {
+            captureStudio.show()
+            return
+        }
+        closeTownMode()
+        if demo == nil { setDemoMode(true) }
+        let studio = CaptureWindowController(controller: self)
+        studio.onClose = { [weak self] in self?.captureStudioDidClose() }
+        captureStudio = studio
+        if let lastSnapshot { studio.scene.apply(lastSnapshot) }
+        overlay.setSuspended(true)
+        studio.show()
+        applyCapturePreset(CapturePreset.all[0])
+    }
+
+    private func captureStudioDidClose() {
+        captureStudio = nil
+        overlay.setSuspended(townMode != nil)
+        overlay.requestRedraw()
+    }
+
+    /// Sets level, time, buildings and decorations in one go, then what residents do.
+    func applyCapturePreset(_ preset: CapturePreset) {
+        stopDemoCycle()
+        demo = DemoState(level: preset.level, phase: preset.phase, extras: preset.extras, decor: preset.decor)
+        refresh()
+        if let activity = preset.residents { demoResidents(activity) }
+        captureStudio?.didApply(preset)
+    }
+
+    func setDemoExtras(_ extras: Set<TownFeature>) {
+        guard demo != nil else { return }
+        demo?.extras = extras
+        refresh()
+    }
+
+    func setDemoDecor(_ layout: DecorLayout) {
+        guard demo != nil else { return }
+        demo?.decor = layout
+        refresh()
+    }
+
+    /// The DEMO tag stays on in Capture Studio unless switched off there (T).
+    func refreshCaptureTag() {
+        guard let captureStudio else { return }
+        captureStudio.scene.setTag(captureStudio.showsTag ? sceneTag : nil)
     }
 
     // MARK: Developer & Demo Mode

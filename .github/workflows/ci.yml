@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS · build, test, smoke run
+    # Xcode 16+ ships Swift 6 and Swift Testing, which the tests need.
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Build all targets (debug)
+        run: swift build 2>&1 | tee build.log
+
+      - name: Report compiler warnings
+        # Annotates each Swift warning on the PR and lists them in the job summary.
+        # Linker search-path warnings from the toolchain are ignored. Does not fail the build.
+        run: |
+          grep -E '^/.*\.swift:[0-9]+:[0-9]+: warning: ' build.log | sort -u > warnings.txt || true
+          count=$(wc -l < warnings.txt | tr -d ' ')
+          {
+            echo "### Swift compiler warnings: $count"
+            if [ "$count" != "0" ]; then echo '```'; sed "s|$PWD/||" warnings.txt; echo '```'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          sed "s|$PWD/||" warnings.txt | while IFS= read -r line; do
+            file=${line%%:*}; rest=${line#*:}; ln=${rest%%:*}; rest=${rest#*:}; col=${rest%%:*}
+            msg=${line#*: warning: }
+            echo "::warning file=$file,line=$ln,col=$col::$msg"
+          done
+
+      - name: Test (OddlyTownCore)
+        run: swift test
+
+      - name: Bundle app (release)
+        run: scripts/build-app.sh
+
+      - name: Smoke run · normal mode
+        run: scripts/smoke-run.sh -d 60 -l normal
+
+      - name: Smoke run · developer mode (5 s ticks, 60× time)
+        run: scripts/smoke-run.sh -d 60 -l dev -- --dev
+
+      - name: Resource summary
+        if: always()
+        run: |
+          {
+            echo "### Smoke-run resource samples (GitHub VM, not a real Mac — use for regressions only)"
+            for f in build/smoke/*.txt; do
+              [ -f "$f" ] || continue
+              echo "**$(basename "$f" .txt)**"; echo '```'; cat "$f"; echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect crash reports
+        if: failure()
+        run: |
+          mkdir -p build/smoke/crashes
+          cp ~/Library/Logs/DiagnosticReports/OddlyTown* build/smoke/crashes/ 2>/dev/null || true
+
+      - name: Zip app
+        if: always()
+        run: |
+          if [ -d "build/Oddly Town.app" ]; then
+            ditto -c -k --keepParent "build/Oddly Town.app" "build/Oddly-Town-${GITHUB_SHA::7}.zip"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oddly-town-macos-${{ github.sha }}
+          path: |
+            build/*.zip
+            build/smoke/
+            build.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  linux-core:
+    name: Linux · core tests (swift:6.0)
+    runs-on: ubuntu-latest
+    container: swift:6.0-jammy
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test (OddlyTownCore)
+        run: swift test

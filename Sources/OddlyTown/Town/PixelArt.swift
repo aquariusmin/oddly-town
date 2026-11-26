@@ -34,6 +34,20 @@ enum PixelArt {
         }
     }
 
+    /// Flat 3-row ellipse of light for the ground, brightest in the middle.
+    static func groundLight(width: Int, rgb: UInt32) -> SKTexture {
+        let mid = Double(width - 1) / 2
+        return make(width: width, height: 3) { x, y in
+            let d = abs(Double(x) - mid) / max(1, mid) + (y == 1 ? 0 : 0.35)
+            switch d {
+            case ..<0.45: return (rgb, 0.34)
+            case ..<0.8: return (rgb, 0.2)
+            case ..<1.0: return (rgb, 0.1)
+            default: return nil
+            }
+        }
+    }
+
     /// Shifts rows in `range` right by `offset` pixels (used for the 2-frame tree sway).
     static func shiftRows(_ rows: [String], _ range: Range<Int>, by offset: Int) -> [String] {
         rows.enumerated().map { index, row in

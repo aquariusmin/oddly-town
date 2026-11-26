@@ -19,12 +19,29 @@ def ground():
             if x<i or x>=140-i: c='.'
             elif x==i or x==140-i-1: c='k'
             elif r>=14: c='m' if (x+r)%5==0 else 'M'
-            elif r==0: c='l'
-            elif 8<=r<=11: c='s' if (x*7+r*3)%23==0 else 'P'
+            elif r==0: c='L' if (x*11)%13==0 else 'l'
+            elif r in (8,11): c='Q' if (x*5+r)%9<4 else ('s' if (x*7+r*3)%23==0 else 'P')
+            elif 9<=r<=10: c='s' if (x*7+r*3)%23==0 else 'P'
+            elif r==1 and (x*7)%19==0: c='l'
             else: c='G' if (x*13+r*5)%37==0 else 'g'
             row+=c
         out.append(row)
     return out
+def outlined(rs):
+    # Same rule as TownArt.outlined: 1 px outline outside the silhouette, none under the feet.
+    w=max(map(len,rs))+2
+    g=[['.']*w]+[list('.'+r.ljust(w-2,'.')+'.') for r in rs]; h=len(g)
+    op=lambda x,y:g[y][x]!='.'
+    out=[[False]*w for _ in range(h)]; st=[(x,0) for x in range(w)]+[(0,y) for y in range(h)]+[(w-1,y) for y in range(h)]
+    while st:
+        x,y=st.pop()
+        if not(0<=x<w and 0<=y<h) or out[y][x] or op(x,y): continue
+        out[y][x]=True; st+=[(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+    res=[r[:] for r in g]
+    for y in range(h):
+        for x in range(w):
+            if out[y][x] and ((x>0 and op(x-1,y)) or (x<w-1 and op(x+1,y)) or (y<h-1 and op(x,y+1)) or (y>0 and op(x,y-1))): res[y][x]='o'
+    return [''.join(r) for r in res]
 def draw(img, rs, left, base, p=pal, only=None):
     h=len(rs)
     for ry,row in enumerate(rs):
@@ -72,10 +89,10 @@ def scene(level3=True, activity=True, night=False):
     # Default decorations: bench in spot 1, flower box in spot 3.
     draw(img,["MMMMMMMM", "mmmmmmmm", "M......M", "M......M"],30,2)
     draw(img,[".p.Y.v.", "pgYgvgp", "MMMMMMM", ".M...M."],88,2)
-    res={'n':0x4A3326,'h':0xF1C7A0,'s':0xE07A5F,'k':0x3D405B}
-    top=["..nnn..", ".nnhhh.", "..hhh..", ".sssss.", ".hsssh.", "..sss.."]
-    draw(img, top+["..k.k..",".k...k."], 40, 6, res)
-    res2=dict(res); res2.update({'s':0x81B29A,'n':0xC0703A}); draw(img, top+["..k.k..","..k.k.."], 66, 6, res2)
+    res={'n':0x4A3326,'h':0xF1C7A0,'s':0xE07A5F,'k':0x3D405B,'e':0x2A1F26,'o':0x2A1F26}
+    top=["..nnn..", ".nnheh.", "..hhh..", ".sssss.", ".hsssh.", "..sss.."]
+    draw(img, outlined(top+["..k.k..",".k...k."]), 39, 6, res)
+    res2=dict(res); res2.update({'s':0x4FA3C7,'n':0xC0703A}); draw(img, outlined(top+["..k.k..","..k.k.."]), 65, 6, res2)
     if night:
         px=img.load()
         for y in range(H):

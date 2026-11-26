@@ -59,6 +59,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let sub = NSMenu()
         sub.autoenablesItems = false
         let demo = controller.demo
+        sub.addItem(item("Capture Studio…", #selector(openCapture), on: controller.isCaptureStudioOpen))
         sub.addItem(item("Demo Mode (not saved)", #selector(toggleDemo), on: demo != nil))
 
         var items: [NSMenuItem] = []
@@ -144,6 +145,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func resetPosition() { controller.resetWindowPosition() }
     @objc private func quit() { NSApp.terminate(nil) }
 
+    @objc private func openCapture() { controller.openCaptureStudio() }
     @objc private func toggleDemo() { controller.setDemoMode(controller.demo == nil) }
     @objc private func demoLevel(_ sender: NSMenuItem) { controller.setDemoLevel(sender.tag) }
     @objc private func demoCycle() { controller.toggleDemoCycle() }

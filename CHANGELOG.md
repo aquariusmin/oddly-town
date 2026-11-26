@@ -1,5 +1,40 @@
 # Changelog
 
+## [Unreleased] — Capture Studio
+
+### Added
+- **Capture Studio** (Developer → Capture Studio…): 홍보 영상 촬영 전용 창. Ambient Mode와 별개이고, Demo 상태만 씁니다(저장 안 됨).
+  - 테두리·UI 없음, 창 위에서 포인터 숨김, 모든 조작은 단축키.
+  - 정수 배율 2×/3×/4×(화면에 맞게 자동 선택)와 클로즈업 1–4×. 화면비 9:16·1:1·16:9.
+  - 기기 픽셀에 스냅하는 따라가기 카메라.
+  - 배경: 시간대를 따라가는 하늘, 키 컬러 #FF00FF, 스튜디오.
+  - 프리셋 5종(마을, 주민, 밤, 장식, 다 자란 마을). 레벨·시간·주민 행동·이벤트·장식 세트·활동 시설을 키 하나로 전환.
+  - 촬영 가이드: [docs/CAPTURE.md](docs/CAPTURE.md).
+- 밤 조명: 문 앞·가로등·랜턴 아래 땅 조명, 달무리, 반딧불이.
+- `CaptureLayout`·`CapturePreset` 테스트 10개 (총 80개).
+- **CI** (`.github/workflows/ci.yml`): 푸시·PR마다 macOS에서 앱 타깃까지 빌드하고 `swift test`, `.app` 번들링, 스모크 실행을 합니다. Linux(`swift:6.0`)에서는 코어 테스트를 돌립니다.
+  - Swift 컴파일러 경고를 PR에 주석으로 달고 요약에 개수를 적습니다(빌드는 실패시키지 않음).
+  - 빌드한 `.app`(zip), 스모크 로그, 리소스 샘플을 아티팩트로 14일 보관합니다.
+- `scripts/smoke-run.sh`: 번들 앱을 실행해 계속 살아 있는지 확인하고, CPU·메모리를 샘플링한 뒤 SIGTERM으로 끄고 `town.json`이 저장됐는지 확인합니다.
+- `scripts/measure-resources.sh`: 실행 중인 앱의 CPU(누적 CPU 시간 기준 실제 평균)와 메모리(RSS, macOS에서는 Activity Monitor와 같은 physical footprint)를 CSV로 기록합니다. `--max-cpu`/`--max-mem`으로 목표 미달을 판정합니다.
+
+### Fixed
+- SIGTERM(`kill`, launchd, 스크립트)으로 종료하면 `applicationWillTerminate`를 건너뛰어 마지막 저장이 빠지던 문제. 이제 SIGTERM은 일반 종료(`NSApp.terminate`)로 처리합니다.
+- `TownScene.buildDecorSlots`의 사용하지 않는 변수 경고.
+
+### Changed
+- 주민에게 1px 외곽선과 눈을 추가했습니다. Pip 셔츠는 세이지 → 청록, Juno 셔츠는 모래 → 자두색으로 바꿨습니다(잔디·길과 구분되지 않던 문제).
+- 땅: 길 가장자리 자국과 잔디 하이라이트.
+
+### Verified (2026-11-26, CI run 45816224203, macOS 15 · Xcode 16.4 · Swift 6.1.2)
+- Capture Studio를 포함한 앱 타깃이 Mac에서 수정 없이 빌드됩니다. Swift 컴파일러 경고 0개.
+- `swift test` 80개 통과 (macOS, Linux `swift:6.0` 모두).
+- 스모크 실행(일반·`--dev` 각 60초): 실행 유지, SIGTERM으로 정상 종료, `town.json` 저장 확인.
+  - GitHub VM 수치(참고용): 평균 CPU 약 2.0%, physical footprint 13 MB, 60초 동안 증가 +0.2 MB 이하.
+
+### Not verified
+- Capture Studio 화면과 단축키 동작, 실기기 성능 수치(위 수치는 GPU가 없는 VM 기준).
+
 ## [0.2.0-alpha] — 2026-10-21 — Ambient Living World
 
 ### Added

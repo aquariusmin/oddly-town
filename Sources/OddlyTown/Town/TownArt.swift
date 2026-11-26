@@ -17,7 +17,8 @@ enum TownArt {
         "m": 0xB57D4C, "M": 0x8A5A34, // wood
         "o": 0xF2A541, "p": 0xF29AB5, "v": 0x9B6BD3, "b": 0x5B8FD0, // flower / paint colours
         "c": 0xFFFFFF, "C": 0xE1EAF3, // cloud
-        "P": 0xE4C48F, // path
+        "P": 0xE4C48F, "Q": 0xCDAA74, // path, path edge
+        "L": 0xB8E27E, // grass highlight
     ]
 
     /// Textures are built once and shared by Ambient Mode and Town Mode.
@@ -256,7 +257,7 @@ enum TownArt {
 
     // MARK: Generated pieces
 
-    /// Floating grass island with a dirt underside and a path band. 140 × 17 px.
+    /// Floating grass island with a dirt underside and a path band with worn edges. 140 × 17 px.
     static func groundRows(width: Int = 140) -> [String] {
         let height = 17
         let insets = [2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 6]
@@ -266,8 +267,10 @@ enum TownArt {
                 if x < inset || x >= width - inset { return "." }
                 if x == inset || x == width - inset - 1 { return "k" }
                 if r >= 14 { return (x + r) % 5 == 0 ? "m" : "M" }
-                if r == 0 { return "l" }
-                if (8...11).contains(r) { return (x * 7 + r * 3) % 23 == 0 ? "s" : "P" }
+                if r == 0 { return (x * 11) % 13 == 0 ? "L" : "l" }
+                if r == 8 || r == 11 { return (x * 5 + r) % 9 < 4 ? "Q" : ((x * 7 + r * 3) % 23 == 0 ? "s" : "P") }
+                if (9...10).contains(r) { return (x * 7 + r * 3) % 23 == 0 ? "s" : "P" }
+                if r == 1 && (x * 7) % 19 == 0 { return "l" }
                 return (x * 13 + r * 5) % 37 == 0 ? "G" : "g"
             })
         }

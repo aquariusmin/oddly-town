@@ -6,11 +6,14 @@
 |---|---|---|
 | `swift test` | Mac | `OddlyTownCore` 전체 |
 | `scripts/test-core-docker.sh` | Linux + Docker | 동일 (macOS 타깃은 자동 제외) |
+| `scripts/smoke-run.sh` | Mac (`scripts/build-app.sh` 후) | 번들 앱 실행 → 살아 있는지 확인 → CPU·메모리 샘플링 → SIGTERM 종료 → `town.json` 저장 확인 |
+| CI (`.github/workflows/ci.yml`) | GitHub macOS + Linux | 위 전부: 앱 타깃 빌드, 테스트, 번들링, 스모크 실행(일반·`--dev`), 컴파일러 경고 주석 |
 
 | 버전 | Mac (CLT, macOS 27 SDK) | Linux Docker (`swift:6.0-jammy`) |
 |---|---|---|
 | v0.1.0 | 36개 통과 | 36개 통과 |
-| v0.2.0 | **미실행** | **70개 통과** |
+| v0.2.0 | 70개 통과 | 70개 통과 |
+| Unreleased (Capture Studio) | **80개 통과** (CI, Xcode 16.4) | **80개 통과** |
 
 ### 검증 항목
 
@@ -95,11 +98,17 @@
 3. 상태마다 5분씩 % CPU 평균과 메모리를 기록합니다. Energy 탭의 "에너지 영향"도 기록합니다.
 
 ### 터미널 샘플링 (기록용)
+`scripts/measure-resources.sh`를 씁니다.
+- CPU: ps의 감쇠 평균(`%cpu`) 대신 누적 CPU 시간의 변화로 계산하므로 실제 평균입니다.
+- 메모리: RSS와, macOS에서는 Activity Monitor의 "메모리"와 같은 physical footprint(`vmmap --summary`)를 기록합니다.
+
 ```bash
-PID=$(pgrep -x OddlyTown)
-for i in $(seq 1 60); do ps -o %cpu=,rss= -p "$PID"; sleep 5; done | \
-  awk '{c+=$1; m=$2>m?$2:m} END {printf "avg CPU %.2f%%, peak RSS %.1f MB\n", c/NR, m/1024}'
+open "build/Oddly Town.app"
+scripts/measure-resources.sh -d 300 -i 5 -o ambient.csv                 # 상태 하나당 5분
+scripts/measure-resources.sh -d 300 --max-cpu 1 --max-mem 150          # 목표 미달이면 exit 2
 ```
+
+결과 요약(평균·최대 CPU, 메모리 시작/끝/최대/변화량)을 상태별로 이 문서나 CHANGELOG의 "Verified"에 날짜와 함께 적습니다. 장시간 방치 시나리오에서는 `-d 3600 -i 30`처럼 쓰고 메모리 "change"가 0 근처인지 봅니다.
 
 ### Instruments
 - **Allocations**: Town Mode를 5번 열고 닫으며 "Mark Generation"을 찍어 세대 사이 증가가 0에 가까운지 확인합니다. 장시간 방치 중에도 1분 간격으로 확인합니다.
